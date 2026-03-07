@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Star, ShieldCheck, Lock, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Star, ShieldCheck, Lock, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 // --- Components ---
@@ -226,8 +226,8 @@ export default function LeaveReviewPage() {
                             type="submit"
                             disabled={!isFormValid}
                             className={`w-full sm:w-auto px-8 py-4 rounded-xl font-bold tracking-wide transition-all duration-300 flex items-center justify-center space-x-2 ${isFormValid
-                                    ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
-                                    : "bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700"
+                                ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
+                                : "bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700"
                                 }`}
                         >
                             <span>Submit Verified Review</span>
