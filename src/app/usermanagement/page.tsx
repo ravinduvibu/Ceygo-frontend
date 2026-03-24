@@ -9,6 +9,7 @@ import {
     CalendarCheck2,
     Activity,
     Settings,
+    Star,
     ChevronRight,
     Search,
     Bell,
@@ -29,6 +30,7 @@ import {
     Filter,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ── Types ─────────────────────────────────────────────────
 type Role = "Admin" | "Seller" | "Tourist";
@@ -110,13 +112,13 @@ function RoleBadge({ role }: { role: Role }) {
 
 // ── Nav sidebar ───────────────────────────────────────────
 const navItems = [
-    { icon: LayoutDashboard, label: "Overview", href: "/admin" },
+    { icon: LayoutDashboard, label: "Overview", href: "/admin", active: false },
     { icon: Users, label: "User Management", href: "/usermanagement", active: true },
-    { icon: ShieldCheck, label: "Seller Verification", href: "/verification", badge: 148 },
-    { icon: BarChart3, label: "Analytics", href: "#" },
-    { icon: CalendarCheck2, label: "Bookings", href: "#" },
-    { icon: Activity, label: "Platform Health", href: "#" },
-    { icon: Settings, label: "Settings", href: "#" },
+    { icon: ShieldCheck, label: "Seller Verification", href: "/verification", active: false, badge: 148 },
+    { icon: BarChart3, label: "Analytics", href: "/forecasting", active: false },
+    { icon: CalendarCheck2, label: "Bookings", href: "/bookings", active: false },
+    { icon: Star, label: "Verified Reviews", href: "/verified-reviews/admin", active: false, badge: 1 },
+    { icon: Settings, label: "Settings", href: "/settings/admin", active: false },
 ];
 
 // Build default toggled state from role
@@ -178,8 +180,8 @@ export default function UserManagement() {
                     </span>
                 </div>
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, badge }) => (
-                        <button key={label}
+                    {navItems.map(({ icon: Icon, label, active, badge, href }) => (
+                        <Link key={label} href={href}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                                 }`}
                         >
@@ -191,18 +193,22 @@ export default function UserManagement() {
                                 {badge && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">{badge}</span>}
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
                             </div>
-                        </button>
+                        </Link>
                     ))}
                 </nav>
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors">
+                    <Link 
+                        href="/" 
+                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors"
+                    >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">SA</div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
                         <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </div>
+                    </Link>
                 </div>
             </aside>
 

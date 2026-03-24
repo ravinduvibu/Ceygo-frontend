@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function GenericVerifiedReviews() {
+export default function GenericSettings() {
     redirect("/");
 }

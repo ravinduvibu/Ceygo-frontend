@@ -16,6 +16,7 @@ import {
     CalendarCheck2,
     Activity,
     Settings,
+    Star,
     LogOut,
     UserCheck,
     Building2,
@@ -27,16 +28,17 @@ import {
     ClipboardList,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ── Sidebar nav ───────────────────────────────────────────
 const navItems = [
-    { icon: LayoutDashboard, label: "Overview", active: false, badge: 0 },
-    { icon: Users, label: "User Management", active: false, badge: 0 },
-    { icon: ShieldCheck, label: "Verification Queue", active: true, badge: 148 },
-    { icon: BarChart3, label: "Analytics", active: false, badge: 0 },
-    { icon: CalendarCheck2, label: "Bookings", active: false, badge: 0 },
-    { icon: Activity, label: "Platform Health", active: false, badge: 0 },
-    { icon: Settings, label: "Settings", active: false, badge: 0 },
+    { icon: LayoutDashboard, label: "Overview", active: false, badge: 0, href: "/admin" },
+    { icon: Users, label: "User Management", active: false, badge: 0, href: "/usermanagement" },
+    { icon: ShieldCheck, label: "Verification Queue", active: true, badge: 148, href: "/verification" },
+    { icon: BarChart3, label: "Analytics", active: false, badge: 0, href: "/forecasting" },
+    { icon: CalendarCheck2, label: "Bookings", active: false, badge: 0, href: "/bookings" },
+    { icon: Star, label: "Verified Reviews", active: false, badge: 1, href: "/verified-reviews/admin" },
+    { icon: Settings, label: "Settings", active: false, badge: 0, href: "/settings/admin" },
 ];
 
 // ── Queue applicants ──────────────────────────────────────
@@ -77,9 +79,10 @@ export default function VerificationPage() {
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, badge }) => (
-                        <button
+                    {navItems.map(({ icon: Icon, label, active, badge, href }) => (
+                        <Link
                             key={label}
+                            href={href}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -97,19 +100,23 @@ export default function VerificationPage() {
                                 )}
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
                             </div>
-                        </button>
+                        </Link>
                     ))}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors">
+                    <Link
+                        href="/"
+                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors"
+                    >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">SA</div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
                         <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </div>
+                    </Link>
                 </div>
             </aside>
 
