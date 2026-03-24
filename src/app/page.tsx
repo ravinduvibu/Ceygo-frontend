@@ -1,15 +1,41 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
 
 export default function Home() {
   const [role, setRole] = useState("Traveler");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(""), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col lg:flex-row bg-slate-50">
+    <div className="flex min-h-screen w-full flex-col lg:flex-row bg-slate-50 relative">
+      {/* Toast Popup */}
+      <div
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${error ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"
+          }`}
+      >
+        <div className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white shadow-2xl shadow-slate-900/40 border border-slate-800">
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500/20 text-red-500 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <span className="text-sm font-semibold tracking-wide">{error}</span>
+        </div>
+      </div>
       {/* Left Pane - Brand / Hero */}
       <div className="relative hidden w-full lg:flex lg:w-1/2 flex-col justify-between p-12 overflow-hidden">
         {/* Background Image */}
@@ -108,12 +134,61 @@ export default function Home() {
               />
             </div>
 
-            <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-5" noValidate onSubmit={(e) => {
+              e.preventDefault();
+              setError("");
+
+              const cleanEmail = email.trim();
+              const cleanPassword = password.trim();
+
+              if (!cleanEmail) {
+                setError("Email is required.");
+                return;
+              }
+
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(cleanEmail)) {
+                setError("Please enter a valid email address.");
+                return;
+              }
+
+              if (!cleanPassword) {
+                setError("Password is required.");
+                return;
+              }
+
+              if (cleanPassword.length < 5) {
+                setError("Password must be at least 5 characters long.");
+                return;
+              }
+
+              if (cleanEmail.toLowerCase() === "admin@gmail.com" && cleanPassword === "admin") {
+                document.cookie = "auth=true; path=/";
+                router.push("/admin");
+              } else if (cleanEmail.toLowerCase() === "partner@gmail.com" && cleanPassword === "partner") {
+                if (role !== "Partner") {
+                  setError("Role mismatch! Please select 'Partner' to log into a seller account.");
+                  return;
+                }
+                document.cookie = "auth=true; path=/";
+                router.push("/partnerdashboard");
+              } else if (cleanEmail.toLowerCase() === "traveler@gmail.com" && cleanPassword === "traveler") {
+                if (role !== "Traveler") {
+                  setError("Role mismatch! Please select 'Traveler' to log into a tourist account.");
+                  return;
+                }
+                document.cookie = "auth=true; path=/";
+                router.push("/dashboard");
+              } else {
+                setError("Invalid credentials. Please use correct email and password");
+              }
+            }}>
               <Input
                 label="Email"
                 type="email"
                 placeholder="Enter your email"
-                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
 
               <div className="space-y-1">
@@ -121,7 +196,8 @@ export default function Home() {
                   label="Password"
                   type="password"
                   placeholder="••••••••"
-                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <div className="flex justify-end pt-1">
                   <a href="#" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">

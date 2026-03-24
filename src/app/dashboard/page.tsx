@@ -26,16 +26,17 @@ import {
     Users,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ── Mock Data ──────────────────────────────────────────────
 const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", active: true, count: 0 },
-    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3 },
-    { icon: MessageSquare, label: "Message Artisan", active: false, count: 2 },
-    { icon: Compass, label: "Find Experiences", active: false, count: 0 },
-    { icon: Star, label: "Verified Reviews", active: false, count: 0 },
-    { icon: BookOpen, label: "Platform Guide", active: false, count: 0 },
-    { icon: Settings, label: "Settings", active: false, count: 0 },
+    { icon: LayoutDashboard, label: "Dashboard", active: true, count: 0, href: "/dashboard" },
+    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "#" },
+    { icon: MessageSquare, label: "Message Artisan", active: false, count: 2, href: "/messages" },
+    { icon: Compass, label: "Find Experiences", active: false, count: 0, href: "/search" },
+    { icon: Star, label: "Verified Reviews", active: false, count: 0, href: "/verified-reviews/traveler" },
+    { icon: BookOpen, label: "Platform Guide", active: false, count: 0, href: "/guide" },
+    { icon: Settings, label: "Settings", active: false, count: 0, href: "/settings/traveler" },
 ];
 
 const journeys = [
@@ -195,9 +196,10 @@ export default function TouristDashboard() {
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count }) => (
-                        <button
+                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
+                        <Link
                             key={label}
+                            href={href}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -213,12 +215,16 @@ export default function TouristDashboard() {
                                 )}
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
                             </div>
-                        </button>
+                        </Link>
                     ))}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                    <Link 
+                        href="/" 
+                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                    >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                             AL
                         </div>
@@ -227,7 +233,7 @@ export default function TouristDashboard() {
                             <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                         </div>
                         <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </div>
+                    </Link>
                 </div>
             </aside>
 

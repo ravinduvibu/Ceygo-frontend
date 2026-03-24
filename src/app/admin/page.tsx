@@ -8,6 +8,7 @@ import {
     CalendarCheck2,
     Activity,
     Settings,
+    Star,
     Bell,
     Search,
     ChevronRight,
@@ -58,13 +59,13 @@ const sellers = [
 ];
 
 const navItems = [
-    { icon: LayoutDashboard, label: "Overview", active: true, alert: 0 },
-    { icon: Users, label: "User Management", active: false, alert: 0 },
-    { icon: ShieldCheck, label: "Seller Verification", active: false, alert: 7 },
-    { icon: BarChart3, label: "Analytics", active: false, alert: 0 },
-    { icon: CalendarCheck2, label: "Bookings", active: false, alert: 0 },
-    { icon: Activity, label: "Platform Health", active: false, alert: 0 },
-    { icon: Settings, label: "Settings", active: false, alert: 0 },
+    { icon: LayoutDashboard, label: "Overview", active: true, alert: 0, href: "/admin" },
+    { icon: Users, label: "User Management", active: false, alert: 0, href: "/usermanagement" },
+    { icon: ShieldCheck, label: "Seller Verification", active: false, alert: 7, href: "/verification" },
+    { icon: BarChart3, label: "Analytics", active: false, alert: 0, href: "/forecasting" },
+    { icon: CalendarCheck2, label: "Bookings", active: false, alert: 0, href: "/bookings" },
+    { icon: Star, label: "Verified Reviews", active: false, alert: 1, href: "/verified-reviews/admin" },
+    { icon: Settings, label: "Settings", active: false, alert: 0, href: "/settings/admin" },
 ];
 
 const kpis = [
@@ -139,9 +140,10 @@ export default function AdminDashboard() {
 
                 {/* Nav */}
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, alert }) => (
-                        <button
+                    {navItems.map(({ icon: Icon, label, active, alert, href }) => (
+                        <Link
                             key={label}
+                            href={href}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                 ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                 : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -157,13 +159,17 @@ export default function AdminDashboard() {
                                 </span>
                             )}
                             {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
-                        </button>
+                        </Link>
                     ))}
                 </nav>
 
                 {/* User */}
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                    <Link 
+                        href="/" 
+                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                    >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                             SA
                         </div>
@@ -172,7 +178,7 @@ export default function AdminDashboard() {
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
                         <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </div>
+                    </Link>
                 </div>
             </aside>
 
