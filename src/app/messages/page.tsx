@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Bookmark,
@@ -15,6 +16,18 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+const CLEARED_KEY = "ceygo_nav_cleared";
+function getClearedLabels(): string[] {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(CLEARED_KEY) || "[]"); } catch { return []; }
+}
+function clearNavLabel(label: string) {
+    const cleared = getClearedLabels();
+    if (!cleared.includes(label)) {
+        localStorage.setItem(CLEARED_KEY, JSON.stringify([...cleared, label]));
+    }
+}
+
 const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", active: false, count: 0, href: "/dashboard" },
     { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "/dashboard/My-Verified-Journeys" },
@@ -27,6 +40,18 @@ const navItems = [
 ];
 
 export default function MessagesPage() {
+    const [clearedLabels, setClearedLabels] = useState<string[]>([]);
+
+    useEffect(() => {
+        clearNavLabel("Message Artisan");
+        setClearedLabels(getClearedLabels());
+    }, []);
+
+    const handleNavClick = (label: string) => {
+        clearNavLabel(label);
+        setClearedLabels(getClearedLabels());
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
             {/* ── Sidebar ── */}
@@ -38,10 +63,13 @@ export default function MessagesPage() {
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
+                    {navItems.map(({ icon: Icon, label, active, count, href }) => {
+                        const displayCount = clearedLabels.includes(label) ? 0 : count;
+                        return (
                         <Link
                             key={label}
                             href={href}
+                            onClick={() => handleNavClick(label)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -52,13 +80,14 @@ export default function MessagesPage() {
                                 <span>{label}</span>
                             </div>
                             <div className="flex items-center space-x-1">
-                                {count > 0 && (
-                                    <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{count}</span>
+                                {displayCount > 0 && (
+                                    <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{displayCount}</span>
                                 )}
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
                             </div>
                         </Link>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">

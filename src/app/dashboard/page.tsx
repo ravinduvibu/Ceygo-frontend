@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Bookmark,
@@ -131,9 +131,34 @@ const services = [
     },
 ];
 
+const CLEARED_KEY = "ceygo_nav_cleared";
+
+function getClearedLabels(): string[] {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(CLEARED_KEY) || "[]"); } catch { return []; }
+}
+function clearNavLabel(label: string) {
+    const cleared = getClearedLabels();
+    if (!cleared.includes(label)) {
+        localStorage.setItem(CLEARED_KEY, JSON.stringify([...cleared, label]));
+    }
+}
+
 export default function TouristDashboard() {
     const [categoryFilter, setCategoryFilter] = useState("All Categories");
     const [favorites, setFavorites] = useState<number[]>(services.filter(s => s.isFavo).map(s => s.id));
+    const [clearedLabels, setClearedLabels] = useState<string[]>([]);
+
+    useEffect(() => {
+        // Auto-clear the active page's nav item on mount
+        clearNavLabel("Dashboard");
+        setClearedLabels(getClearedLabels());
+    }, []);
+
+    const handleNavClick = (label: string) => {
+        clearNavLabel(label);
+        setClearedLabels(getClearedLabels());
+    };
 
     const categories = ["All Categories", "Culinary & Food", "Nature & Wildlife", "Heritage Tours", "Local Crafts", "Wellness", "Adventure", "Transport"];
     
@@ -154,11 +179,13 @@ export default function TouristDashboard() {
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
                     {navItems.map(({ icon: Icon, label, active, count, href }) => {
-                        const displayCount = label === "Wishlist" ? favorites.length : count;
+                        const rawCount = label === "Wishlist" ? favorites.length : count;
+                        const displayCount = clearedLabels.includes(label) ? 0 : rawCount;
                         return (
                         <Link
                             key={label}
                             href={href}
+                            onClick={() => handleNavClick(label)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -251,7 +278,7 @@ export default function TouristDashboard() {
                             {services.map((s) => {
                                 const isLiked = favorites.includes(s.id);
                                 return (
-                                    <div key={s.id} className="group flex flex-col cursor-pointer">
+                                    <Link key={s.id} href={`/gig/${s.id}`} className="group flex flex-col cursor-pointer">
                                         {/* Image Thumbnail wrapper */}
                                         <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-100">
                                             <Image 
@@ -308,7 +335,7 @@ export default function TouristDashboard() {
                                                 <p className="text-base font-black text-slate-900 leading-none">LKR {s.price}</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>
