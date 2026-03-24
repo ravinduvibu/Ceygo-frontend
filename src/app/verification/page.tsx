@@ -34,7 +34,7 @@ import Link from "next/link";
 const navItems = [
     { icon: LayoutDashboard, label: "Overview", active: false, badge: 0, href: "/admin" },
     { icon: Users, label: "User Management", active: false, badge: 0, href: "/usermanagement" },
-    { icon: ShieldCheck, label: "Verification Queue", active: true, badge: 148, href: "/verification" },
+    { icon: ShieldCheck, label: "Seller Verification", active: true, badge: 148, href: "/verification" },
     { icon: BarChart3, label: "Analytics", active: false, badge: 0, href: "/forecasting" },
     { icon: CalendarCheck2, label: "Bookings", active: false, badge: 0, href: "/bookings" },
     { icon: Star, label: "Verified Reviews", active: false, badge: 1, href: "/verified-reviews/admin" },

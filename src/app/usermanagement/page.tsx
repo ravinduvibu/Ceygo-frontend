@@ -47,7 +47,7 @@ interface User {
 }
 
 // ── Mock Data ─────────────────────────────────────────────
-const users: User[] = [
+const initialUsers: User[] = [
     { id: 1, name: "Samantha Clarke", email: "s.clarke@email.com", phone: "+1 604 555 0182", joined: "Jan 12, 2026", role: "Admin", status: "Active", avatar: "SC" },
     { id: 2, name: "Nuwan Perera", email: "nuwan.p@ceygo.lk", phone: "+94 77 234 5678", joined: "Feb 3, 2026", role: "Seller", status: "Active", avatar: "NP" },
     { id: 3, name: "Lisa Müller", email: "l.muller@gmail.com", phone: "+49 151 2233 4455", joined: "Jan 28, 2026", role: "Tourist", status: "Active", avatar: "LM" },
@@ -135,10 +135,34 @@ function defaultPerms(role: Role): Record<string, boolean> {
 export default function UserManagement() {
     const [search, setSearch] = useState("");
     const [filterRole, setFilterRole] = useState<Role | "All">("All");
+    const [users, setUsers] = useState<User[]>(initialUsers);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [editRole, setEditRole] = useState<Role>("Tourist");
     const [customPerms, setCustomPerms] = useState<Record<string, boolean>>({});
     const [saved, setSaved] = useState(false);
+
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newUserForm, setNewUserForm] = useState({ name: "", email: "", role: "Seller" as Role });
+
+    const handleAddUser = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newUserForm.name || !newUserForm.email) return;
+
+        const newUser: User = {
+            id: Math.floor(Math.random() * 1000) + 10,
+            name: newUserForm.name,
+            email: newUserForm.email,
+            phone: "+94 77 000 0000",
+            joined: "Just now",
+            role: newUserForm.role,
+            status: "Active",
+            avatar: newUserForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+        };
+
+        setUsers([newUser, ...users]);
+        setNewUserForm({ name: "", email: "", role: "Seller" as Role });
+        setIsAddModalOpen(false);
+    };
 
     const filtered = users.filter((u) => {
         const matchSearch =
@@ -222,7 +246,7 @@ export default function UserManagement() {
                         <p className="text-xs text-slate-400">Role-based permissions · {users.length} system users</p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <button className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#ff6b35] text-white text-xs font-semibold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200">
+                        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#ff6b35] text-white text-xs font-semibold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200">
                             <Plus className="w-3.5 h-3.5" />
                             <span>Add User</span>
                         </button>
@@ -460,6 +484,84 @@ export default function UserManagement() {
                     )}
                 </main>
             </div>
+
+            {/* Add User Modal */}
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">Add New User</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Create a new core platform account</p>
+                            </div>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddUser} className="p-6 space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Full Name</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <UserCircle2 className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="e.g. Maya Silva"
+                                        value={newUserForm.name}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Email Address</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div className="w-4 h-4 text-slate-400 text-xs font-bold leading-none flex items-center justify-center">@</div>
+                                    </div>
+                                    <input
+                                        required
+                                        type="email"
+                                        placeholder="e.g. maya@ceygo.lk"
+                                        value={newUserForm.email}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">System Role</label>
+                                <div className="relative">
+                                    <select
+                                        value={newUserForm.role}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, role: e.target.value as Role })}
+                                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="Admin">Administrator (Full Access)</option>
+                                        <option value="Seller">Seller / Partner</option>
+                                        <option value="Tourist">Tourist / Consumer</option>
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-2 flex items-center space-x-3">
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#ff6b35] hover:bg-[#e55a2b] text-white font-semibold text-sm shadow-sm shadow-orange-200 transition-colors flex items-center justify-center space-x-2">
+                                    <Plus className="w-4 h-4" />
+                                    <span>Create User</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
