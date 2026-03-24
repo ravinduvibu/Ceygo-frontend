@@ -16,16 +16,18 @@ import {
     Globe,
     CreditCard,
     Shield,
-    Camera
+    Camera,
+    Heart,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", active: false, count: 0, href: "/dashboard" },
-    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "#" },
+    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "/dashboard/My-Verified-Journeys" },
     { icon: MessageSquare, label: "Message Artisan", active: false, count: 2, href: "/messages" },
     { icon: Compass, label: "Find Experiences", active: false, count: 0, href: "/search" },
+    { icon: Heart, label: "Wishlist", active: false, count: 0, href: "/wishlist" },
     { icon: Star, label: "Verified Reviews", active: false, count: 0, href: "/verified-reviews/traveler" },
     { icon: BookOpen, label: "Platform Guide", active: false, count: 0, href: "/guide" },
     { icon: Settings, label: "Settings", active: true, count: 0, href: "/settings/traveler" },
@@ -69,11 +71,7 @@ export default function TravelerSettings() {
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <Link 
-                        href="/" 
-                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
-                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
-                    >
+                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                             AL
                         </div>
@@ -81,8 +79,15 @@ export default function TravelerSettings() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Alex Müller</p>
                             <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                         </div>
-                        <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </Link>
+                        <Link 
+                            href="/" 
+                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
+                            title="Log out"
+                        >
+                            <LogOut className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             </aside>
 

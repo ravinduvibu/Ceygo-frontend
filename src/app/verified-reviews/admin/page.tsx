@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -27,6 +27,9 @@ import {
     Clock,
     TrendingUp,
     EyeOff,
+    CheckCheck,
+    UserPlus,
+    ShieldAlert,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -201,11 +204,50 @@ const navItems = [
     { icon: Settings, label: "Settings", active: false, alert: 0, href: "/settings/admin" },
 ];
 
+// ── Notification types ───────────────────────────────────
+interface Notification {
+    id: number;
+    icon: React.ElementType;
+    iconColor: string;
+    iconBg: string;
+    title: string;
+    desc: string;
+    time: string;
+    read: boolean;
+}
+
+const initialNotifications: Notification[] = [
+    { id: 1, icon: AlertTriangle, iconColor: "text-red-600",    iconBg: "bg-red-50",    title: "Fraudulent review flagged",   desc: "Anonymous User review on Elephant Safari",  time: "5 min ago",  read: false },
+    { id: 2, icon: Clock,        iconColor: "text-amber-600",  iconBg: "bg-amber-50",  title: "Review pending moderation",  desc: "Guest123 — Nine Arches Bridge Sunrise Hike",  time: "22 min ago", read: false },
+    { id: 3, icon: ShieldAlert,  iconColor: "text-orange-600", iconBg: "bg-orange-50", title: "Seller verification pending", desc: "3 sellers awaiting audit approval",            time: "1 hr ago",   read: false },
+    { id: 4, icon: BadgeCheck,   iconColor: "text-emerald-600",iconBg: "bg-emerald-50",title: "Review approved",             desc: "Alex Müller — Anuradhapura cycle tour",       time: "3 hr ago",   read: true  },
+    { id: 5, icon: TrendingUp,   iconColor: "text-blue-600",   iconBg: "bg-blue-50",   title: "Avg. rating hit 4.6★",       desc: "Verified reviews milestone reached",          time: "Yesterday",  read: true  },
+];
+
 export default function VerifiedReviewsPage() {
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState<VerificationStatus | "All">("All");
     const [selectedReview, setSelectedReview] = useState<Review | null>(reviews.find(r => r.moderationStatus === "Flagged") ?? null);
     const [moderationAction, setModerationAction] = useState<string | null>(null);
+
+    // Notifications
+    const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const notifRef = useRef<HTMLDivElement>(null);
+    const unreadCount = notifications.filter(n => !n.read).length;
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+                setNotifOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
     const filtered = reviews.filter((r) => {
         const matchSearch = r.reviewer.toLowerCase().includes(search.toLowerCase()) ||
@@ -259,11 +301,7 @@ export default function VerifiedReviewsPage() {
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <Link 
-                        href="/" 
-                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
-                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
-                    >
+                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                             SA
                         </div>
@@ -271,8 +309,15 @@ export default function VerifiedReviewsPage() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
-                        <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </Link>
+                        <Link 
+                            href="/" 
+                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
+                            title="Log out"
+                        >
+                            <LogOut className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             </aside>
 
@@ -290,10 +335,88 @@ export default function VerifiedReviewsPage() {
                             <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
                             <input value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent text-sm placeholder-slate-400 outline-none flex-1" placeholder="Search reviews..." />
                         </div>
-                        <button className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
-                            <Bell className="w-4 h-4 text-slate-500" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                        </button>
+                        {/* ── Notification Bell ── */}
+                        <div className="relative" ref={notifRef}>
+                            <button
+                                onClick={() => setNotifOpen(o => !o)}
+                                className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                            >
+                                <Bell className="w-4 h-4 text-slate-500" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#ff6b35] text-white text-[9px] font-bold rounded-full px-1 shadow-sm">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {notifOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+                                        <div className="flex items-center space-x-2">
+                                            <Bell className="w-3.5 h-3.5 text-[#ff6b35]" />
+                                            <span className="text-sm font-bold text-slate-900">Notifications</span>
+                                            {unreadCount > 0 && (
+                                                <span className="text-[10px] font-bold bg-[#ff6b35] text-white px-1.5 py-0.5 rounded-full">{unreadCount} new</span>
+                                            )}
+                                        </div>
+                                        {unreadCount > 0 && (
+                                            <button
+                                                onClick={markAllRead}
+                                                className="flex items-center space-x-1 text-[10px] font-semibold text-slate-400 hover:text-[#ff6b35] transition-colors"
+                                            >
+                                                <CheckCheck className="w-3 h-3" />
+                                                <span>Mark all read</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-50">
+                                        {notifications.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-10 text-slate-300">
+                                                <Bell className="w-8 h-8 mb-2" />
+                                                <p className="text-xs font-medium">No notifications</p>
+                                            </div>
+                                        ) : (
+                                            notifications.map(n => {
+                                                const Icon = n.icon;
+                                                return (
+                                                    <div
+                                                        key={n.id}
+                                                        className={`flex items-start space-x-3 px-4 py-3 transition-colors group ${n.read ? "bg-white" : "bg-orange-50/40"}`}
+                                                    >
+                                                        <div className={`w-8 h-8 rounded-xl ${n.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                                            <Icon className={`w-4 h-4 ${n.iconColor}`} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between">
+                                                                <p className={`text-xs font-semibold truncate ${n.read ? "text-slate-600" : "text-slate-900"}`}>{n.title}</p>
+                                                                <button
+                                                                    onClick={() => dismissNotif(n.id)}
+                                                                    className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-slate-100 transition-all"
+                                                                >
+                                                                    <X className="w-3 h-3 text-slate-400" />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{n.desc}</p>
+                                                            <p className="text-[10px] text-slate-300 mt-1">{n.time}</p>
+                                                        </div>
+                                                        {!n.read && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff6b35] flex-shrink-0 mt-1.5" />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
+                                    <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
+                                        <button className="w-full text-[11px] font-semibold text-slate-400 hover:text-[#ff6b35] transition-colors py-1">
+                                            View all notifications
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 

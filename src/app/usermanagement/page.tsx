@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -28,6 +28,10 @@ import {
     ChevronDown,
     Plus,
     Filter,
+    CheckCheck,
+    UserPlus,
+    ShieldAlert,
+    TrendingUp,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -47,7 +51,7 @@ interface User {
 }
 
 // ── Mock Data ─────────────────────────────────────────────
-const users: User[] = [
+const initialUsers: User[] = [
     { id: 1, name: "Samantha Clarke", email: "s.clarke@email.com", phone: "+1 604 555 0182", joined: "Jan 12, 2026", role: "Admin", status: "Active", avatar: "SC" },
     { id: 2, name: "Nuwan Perera", email: "nuwan.p@ceygo.lk", phone: "+94 77 234 5678", joined: "Feb 3, 2026", role: "Seller", status: "Active", avatar: "NP" },
     { id: 3, name: "Lisa Müller", email: "l.muller@gmail.com", phone: "+49 151 2233 4455", joined: "Jan 28, 2026", role: "Tourist", status: "Active", avatar: "LM" },
@@ -132,13 +136,76 @@ function defaultPerms(role: Role): Record<string, boolean> {
     return state;
 }
 
+// ── Notification types ───────────────────────────────────
+interface Notification {
+    id: number;
+    icon: React.ElementType;
+    iconColor: string;
+    iconBg: string;
+    title: string;
+    desc: string;
+    time: string;
+    read: boolean;
+}
+
+const initialNotifications: Notification[] = [
+    { id: 1, icon: UserPlus,    iconColor: "text-blue-600",    iconBg: "bg-blue-50",    title: "New user registered",        desc: "Hiroshi Tanaka joined as Tourist",            time: "2 min ago",  read: false },
+    { id: 2, icon: ShieldAlert, iconColor: "text-amber-600",  iconBg: "bg-amber-50",  title: "Seller verification pending", desc: "3 sellers awaiting audit approval",           time: "18 min ago", read: false },
+    { id: 3, icon: TrendingUp,  iconColor: "text-emerald-600",iconBg: "bg-emerald-50",title: "Platform milestone reached",   desc: "500 verified bookings this month!",          time: "1 hr ago",   read: false },
+    { id: 4, icon: UserPlus,    iconColor: "text-blue-600",   iconBg: "bg-blue-50",   title: "Role updated",                desc: "Emma Thompson promoted to Seller",           time: "3 hr ago",   read: true  },
+    { id: 5, icon: ShieldAlert, iconColor: "text-red-500",    iconBg: "bg-red-50",    title: "Account suspended",           desc: "Priya Krishnan's account was suspended",     time: "Yesterday",  read: true  },
+];
+
 export default function UserManagement() {
     const [search, setSearch] = useState("");
     const [filterRole, setFilterRole] = useState<Role | "All">("All");
+    const [users, setUsers] = useState<User[]>(initialUsers);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [editRole, setEditRole] = useState<Role>("Tourist");
     const [customPerms, setCustomPerms] = useState<Record<string, boolean>>({});
     const [saved, setSaved] = useState(false);
+
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newUserForm, setNewUserForm] = useState({ name: "", email: "", role: "Seller" as Role });
+
+    // Notifications
+    const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const notifRef = useRef<HTMLDivElement>(null);
+    const unreadCount = notifications.filter(n => !n.read).length;
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+                setNotifOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
+
+    const handleAddUser = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newUserForm.name || !newUserForm.email) return;
+
+        const newUser: User = {
+            id: Math.floor(Math.random() * 1000) + 10,
+            name: newUserForm.name,
+            email: newUserForm.email,
+            phone: "+94 77 000 0000",
+            joined: "Just now",
+            role: newUserForm.role,
+            status: "Active",
+            avatar: newUserForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+        };
+
+        setUsers([newUser, ...users]);
+        setNewUserForm({ name: "", email: "", role: "Seller" as Role });
+        setIsAddModalOpen(false);
+    };
 
     const filtered = users.filter((u) => {
         const matchSearch =
@@ -222,14 +289,99 @@ export default function UserManagement() {
                         <p className="text-xs text-slate-400">Role-based permissions · {users.length} system users</p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <button className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#ff6b35] text-white text-xs font-semibold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200">
+                        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#ff6b35] text-white text-xs font-semibold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200">
                             <Plus className="w-3.5 h-3.5" />
                             <span>Add User</span>
                         </button>
-                        <button className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
-                            <Bell className="w-4 h-4 text-slate-500" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff6b35] rounded-full" />
-                        </button>
+
+                        {/* ── Notification Bell ── */}
+                        <div className="relative" ref={notifRef}>
+                            <button
+                                onClick={() => setNotifOpen(o => !o)}
+                                className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                            >
+                                <Bell className="w-4 h-4 text-slate-500" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#ff6b35] text-white text-[9px] font-bold rounded-full px-1 shadow-sm">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Dropdown panel */}
+                            {notifOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    {/* Panel header */}
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+                                        <div className="flex items-center space-x-2">
+                                            <Bell className="w-3.5 h-3.5 text-[#ff6b35]" />
+                                            <span className="text-sm font-bold text-slate-900">Notifications</span>
+                                            {unreadCount > 0 && (
+                                                <span className="text-[10px] font-bold bg-[#ff6b35] text-white px-1.5 py-0.5 rounded-full">{unreadCount} new</span>
+                                            )}
+                                        </div>
+                                        {unreadCount > 0 && (
+                                            <button
+                                                onClick={markAllRead}
+                                                className="flex items-center space-x-1 text-[10px] font-semibold text-slate-400 hover:text-[#ff6b35] transition-colors"
+                                            >
+                                                <CheckCheck className="w-3 h-3" />
+                                                <span>Mark all read</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Notification list */}
+                                    <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-50">
+                                        {notifications.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-10 text-slate-300">
+                                                <Bell className="w-8 h-8 mb-2" />
+                                                <p className="text-xs font-medium">No notifications</p>
+                                            </div>
+                                        ) : (
+                                            notifications.map(n => {
+                                                const Icon = n.icon;
+                                                return (
+                                                    <div
+                                                        key={n.id}
+                                                        className={`flex items-start space-x-3 px-4 py-3 transition-colors group ${
+                                                            n.read ? "bg-white" : "bg-orange-50/40"
+                                                        }`}
+                                                    >
+                                                        <div className={`w-8 h-8 rounded-xl ${n.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                                            <Icon className={`w-4 h-4 ${n.iconColor}`} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between">
+                                                                <p className={`text-xs font-semibold truncate ${ n.read ? "text-slate-600" : "text-slate-900" }`}>{n.title}</p>
+                                                                <button
+                                                                    onClick={() => dismissNotif(n.id)}
+                                                                    className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-slate-100 transition-all"
+                                                                >
+                                                                    <X className="w-3 h-3 text-slate-400" />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{n.desc}</p>
+                                                            <p className="text-[10px] text-slate-300 mt-1">{n.time}</p>
+                                                        </div>
+                                                        {!n.read && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff6b35] flex-shrink-0 mt-1.5" />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
+                                        <button className="w-full text-[11px] font-semibold text-slate-400 hover:text-[#ff6b35] transition-colors py-1">
+                                            View all notifications
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
@@ -460,6 +612,84 @@ export default function UserManagement() {
                     )}
                 </main>
             </div>
+
+            {/* Add User Modal */}
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">Add New User</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Create a new core platform account</p>
+                            </div>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddUser} className="p-6 space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Full Name</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <UserCircle2 className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="e.g. Maya Silva"
+                                        value={newUserForm.name}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Email Address</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div className="w-4 h-4 text-slate-400 text-xs font-bold leading-none flex items-center justify-center">@</div>
+                                    </div>
+                                    <input
+                                        required
+                                        type="email"
+                                        placeholder="e.g. maya@ceygo.lk"
+                                        value={newUserForm.email}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">System Role</label>
+                                <div className="relative">
+                                    <select
+                                        value={newUserForm.role}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, role: e.target.value as Role })}
+                                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="Admin">Administrator (Full Access)</option>
+                                        <option value="Seller">Seller / Partner</option>
+                                        <option value="Tourist">Tourist / Consumer</option>
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-2 flex items-center space-x-3">
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#ff6b35] hover:bg-[#e55a2b] text-white font-semibold text-sm shadow-sm shadow-orange-200 transition-colors flex items-center justify-center space-x-2">
+                                    <Plus className="w-4 h-4" />
+                                    <span>Create User</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

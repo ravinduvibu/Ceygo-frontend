@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -122,6 +123,17 @@ function Gauge({ value }: { value: number }) {
 
 // ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    const [notifications, setNotifications] = useState([
+        { id: 1, title: "New Seller Registration", message: "Nuwan Perera has registered as a TukTuk partner.", time: "10m ago", read: false, type: "user" },
+        { id: 2, title: "High Demand Alert", message: "Ella bookings are up 45% this week.", time: "2h ago", read: false, type: "alert" },
+        { id: 3, title: "System Update", message: "Ceygo v2.4.1 has been successfully deployed.", time: "1d ago", read: true, type: "system" },
+    ]);
+
+    const markAllAsRead = () => {
+        setNotifications(notifications.map(n => ({ ...n, read: true })));
+    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
@@ -165,11 +177,7 @@ export default function AdminDashboard() {
 
                 {/* User */}
                 <div className="p-4 border-t border-slate-100">
-                    <Link 
-                        href="/" 
-                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
-                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
-                    >
+                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                             SA
                         </div>
@@ -177,8 +185,15 @@ export default function AdminDashboard() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
-                        <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </Link>
+                        <Link 
+                            href="/" 
+                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
+                            title="Log out"
+                        >
+                            <LogOut className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             </aside>
 
@@ -195,10 +210,47 @@ export default function AdminDashboard() {
                             <Search className="w-4 h-4 text-slate-400" />
                             <input className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full" placeholder="Search platform..." />
                         </div>
-                        <button className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors">
-                            <Bell className="w-4 h-4 text-slate-500" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff6b35] rounded-full" />
-                        </button>
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                            >
+                                <Bell className="w-4 h-4 text-slate-500" />
+                                {notifications.some(n => !n.read) && (
+                                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#ff6b35] rounded-full border-2 border-white" />
+                                )}
+                            </button>
+
+                            {/* Notifications Dropdown */}
+                            {isNotificationsOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in slide-in-from-top-2 fade-in duration-200">
+                                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                        <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                                        <button onClick={markAllAsRead} className="text-xs font-semibold text-[#ff6b35] hover:text-[#e55a2b]">Mark all as read</button>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {notifications.map(n => (
+                                            <div key={n.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer flex items-start space-x-3 ${!n.read ? 'bg-orange-50/30' : ''}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${n.type === 'user' ? 'bg-blue-100 text-blue-600' : n.type === 'alert' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {n.type === 'user' && <Users className="w-4 h-4" />}
+                                                    {n.type === 'alert' && <AlertTriangle className="w-4 h-4" />}
+                                                    {n.type === 'system' && <ShieldCheck className="w-4 h-4" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-sm truncate ${!n.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>{n.title}</p>
+                                                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400 mt-1.5">{n.time}</p>
+                                                </div>
+                                                {!n.read && <div className="w-2 h-2 bg-[#ff6b35] rounded-full mt-1.5"></div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-3 border-t border-slate-100 bg-slate-50/50 text-center">
+                                        <button onClick={() => setIsNotificationsOpen(false)} className="text-xs font-bold text-slate-600 hover:text-[#ff6b35] transition-colors">View All Activity</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
