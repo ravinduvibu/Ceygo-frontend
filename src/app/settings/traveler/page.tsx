@@ -16,16 +16,18 @@ import {
     Globe,
     CreditCard,
     Shield,
-    Camera
+    Camera,
+    Heart,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", active: false, count: 0, href: "/dashboard" },
-    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "#" },
+    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "/dashboard/My-Verified-Journeys" },
     { icon: MessageSquare, label: "Message Artisan", active: false, count: 2, href: "/messages" },
     { icon: Compass, label: "Find Experiences", active: false, count: 0, href: "/search" },
+    { icon: Heart, label: "Wishlist", active: false, count: 0, href: "/wishlist" },
     { icon: Star, label: "Verified Reviews", active: false, count: 0, href: "/verified-reviews/traveler" },
     { icon: BookOpen, label: "Platform Guide", active: false, count: 0, href: "/guide" },
     { icon: Settings, label: "Settings", active: true, count: 0, href: "/settings/traveler" },

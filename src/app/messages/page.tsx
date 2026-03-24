@@ -1,31 +1,105 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import {
+    LayoutDashboard,
+    Bookmark,
+    MessageSquare,
+    Compass,
+    Star,
+    BookOpen,
+    Settings,
+    ChevronRight,
+    LogOut,
+    Heart,
+} from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-export default function MessagesPlaceholder() {
-    const router = useRouter();
-    
+const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", active: false, count: 0, href: "/dashboard" },
+    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "/dashboard/My-Verified-Journeys" },
+    { icon: MessageSquare, label: "Message Artisan", active: true, count: 2, href: "/messages" },
+    { icon: Compass, label: "Find Experiences", active: false, count: 0, href: "/search" },
+    { icon: Heart, label: "Wishlist", active: false, count: 0, href: "/wishlist" },
+    { icon: Star, label: "Verified Reviews", active: false, count: 0, href: "/verified-reviews/traveler" },
+    { icon: BookOpen, label: "Platform Guide", active: false, count: 0, href: "/guide" },
+    { icon: Settings, label: "Settings", active: false, count: 0, href: "/settings/traveler" },
+];
+
+export default function MessagesPage() {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-slate-50 p-6 font-sans text-slate-800">
-            <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
+        <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
+            {/* ── Sidebar ── */}
+            <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm">
+                <div className="px-5 py-5 flex items-center space-x-3 border-b border-slate-100">
+                    <div className="relative h-9 w-28">
+                        <Image src="/images/logo_transparent.png" alt="Ceygo" fill className="object-contain" priority />
+                    </div>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Messages</h1>
-                <p className="text-slate-500 text-sm leading-relaxed">
-                    This page is currently under construction. Check back soon for exciting updates to the Ceygo platform!
-                </p>
-                <div className="pt-4">
-                    <button onClick={() => router.back()} className="inline-flex items-center justify-center space-x-2 text-sm font-semibold text-slate-600 hover:text-[#ff6b35] transition-colors bg-slate-50 px-6 py-3 rounded-xl border border-slate-100 hover:border-[#ff6b35]/30 w-full group">
-                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                        <span>Go Back</span>
-                    </button>
-                    <div className="mt-4"><Link href="/" className="text-xs text-slate-400 hover:text-[#ff6b35] transition-colors underline underline-offset-4 font-medium">Return Home</Link></div>
+
+                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
+                        <Link
+                            key={label}
+                            href={href}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
+                                    ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                                }`}
+                        >
+                            <div className="flex items-center space-x-3">
+                                <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
+                                <span>{label}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                {count > 0 && (
+                                    <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{count}</span>
+                                )}
+                                {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
+                            </div>
+                        </Link>
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-slate-100">
+                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                            AL
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">Alex Müller</p>
+                            <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
+                        </div>
+                        <Link 
+                            href="/" 
+                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
+                            title="Log out"
+                        >
+                            <LogOut className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
+            </aside>
+
+            {/* ── Main ── */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 bg-white border-b border-slate-200">
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-900">Message Artisan</h1>
+                        <p className="text-xs text-slate-400 mt-0.5">Communicate with verified local guides and hosts.</p>
+                    </div>
+                </header>
+
+                <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                    <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-70">
+                        <MessageSquare className="w-16 h-16 text-slate-300" />
+                        <h2 className="text-lg font-bold text-slate-700">Messages Coming Soon</h2>
+                        <p className="text-slate-500 text-sm max-w-sm text-center">
+                            We're building a secure, translation-enabled messaging platform to connect you directly with local artisans.
+                        </p>
+                    </div>
+                </main>
             </div>
         </div>
     );
