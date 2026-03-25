@@ -19,13 +19,17 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import MyServices from "@/components/partner/MyServices";
+import ActiveOrders from "@/components/partner/ActiveOrders";
+import Inbox from "@/components/partner/Inbox";
+import Earnings from "@/components/partner/Earnings";
 
 const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", active: true, count: 0, href: "/partnerdashboard" },
-    { icon: Briefcase, label: "My Services (Gigs)", active: false, count: 0, href: "#" },
-    { icon: CalendarCheck2, label: "Active Orders", active: false, count: 3, href: "#" },
-    { icon: MessageSquare, label: "Inbox", active: false, count: 5, href: "#" },
-    { icon: Wallet, label: "Earnings", active: false, count: 0, href: "#" },
+    { icon: LayoutDashboard, label: "Dashboard", count: 0 },
+    { icon: Briefcase, label: "My Services (Gigs)", count: 0 },
+    { icon: CalendarCheck2, label: "Active Orders", count: 3 },
+    { icon: MessageSquare, label: "Inbox", count: 5 },
+    { icon: Wallet, label: "Earnings", count: 0 },
 ];
 
 const activeOrders = [
@@ -58,6 +62,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function PartnerDashboard() {
+    const [activeTab, setActiveTab] = useState("Dashboard");
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
 
@@ -83,10 +88,12 @@ export default function PartnerDashboard() {
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
-                        <Link
+                    {navItems.map(({ icon: Icon, label, count }) => {
+                        const active = activeTab === label;
+                        return (
+                        <button
                             key={label}
-                            href={href}
+                            onClick={() => setActiveTab(label)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-slate-800 text-white shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
@@ -102,8 +109,8 @@ export default function PartnerDashboard() {
                                 )}
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
                             </div>
-                        </Link>
-                    ))}
+                        </button>
+                    )})}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 mt-auto">
@@ -161,7 +168,16 @@ export default function PartnerDashboard() {
                         </div>
 
                         {/* Main Layout Grid */}
-                        <div className="grid grid-cols-3 gap-6">
+                        {activeTab === "My Services (Gigs)" ? (
+                            <MyServices />
+                        ) : activeTab === "Active Orders" ? (
+                            <ActiveOrders />
+                        ) : activeTab === "Inbox" ? (
+                            <Inbox />
+                        ) : activeTab === "Earnings" ? (
+                            <Earnings />
+                        ) : activeTab === "Dashboard" ? (
+                            <div className="grid grid-cols-3 gap-6">
                             
                             {/* Left Pane: Active Orders & Services */}
                             <div className="col-span-2 space-y-6">
@@ -300,6 +316,11 @@ export default function PartnerDashboard() {
                             </div>
 
                         </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <p className="text-slate-500">Content for {activeTab} is under construction.</p>
+                            </div>
+                        )}
 
                     </div>
                 </main>
