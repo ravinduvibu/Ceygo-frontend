@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, MoreHorizontal, Star, Image as ImageIcon, Eye, MousePointerClick, CalendarCheck2, Clock, Trash2, Edit3, PauseOctagon } from "lucide-react";
 import Image from "next/image";
+import CreateServiceModal from "./CreateServiceModal";
 
 // Extended mock data for services
 const initialServices = [
@@ -48,18 +49,46 @@ const initialServices = [
 export default function MyServices() {
     const [services, setServices] = useState(initialServices);
     const [filter, setFilter] = useState("All");
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const deleteService = (id: number) => {
+        setServices(services.filter(s => s.id !== id));
+    };
+
+    const toggleServiceStatus = (id: number) => {
+        setServices(services.map(s => {
+            if (s.id === id) {
+                return { ...s, status: s.status === 'Active' ? 'Paused' : 'Active' };
+            }
+            return s;
+        }));
+    };
+
+    const handleAddService = (newService: any) => {
+        setServices([newService, ...services]);
+    };
 
     const filteredServices = services.filter((svc) => filter === "All" || svc.status === filter);
 
     return (
-        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+            
+            <CreateServiceModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                onAddService={handleAddService} 
+            />
+
             {/* Header section */}
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">My Services (Gigs)</h2>
                     <p className="text-sm text-slate-500 mt-1">Manage your offerings, track performance, and create new experiences.</p>
                 </div>
-                <button className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-200 transition-all transform">
+                <button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-200 transition-all transform"
+                >
                     <Plus className="w-5 h-5" />
                     <span>Create New Service</span>
                 </button>
@@ -117,7 +146,7 @@ export default function MyServices() {
                             <ImageIcon className="w-8 h-8 text-slate-300" />
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 mb-1">No services found</h3>
-                        <p className="text-sm text-slate-500">You don't have any services matching this filter.</p>
+                        <p className="text-sm text-slate-500">You don&apos;t have any services matching this filter.</p>
                         {filter !== "All" && (
                             <button onClick={() => setFilter("All")} className="mt-4 text-emerald-600 font-bold hover:underline">
                                 View all services
@@ -198,14 +227,24 @@ export default function MyServices() {
                             {/* Footer Actions */}
                             <div className="bg-slate-50 border-t border-slate-100 px-5 py-3 flex items-center justify-between">
                                 <div className="flex space-x-2">
-                                    <button className="text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Edit">
+                                    <button 
+                                        onClick={() => alert("Edit service functionality coming soon!")}
+                                        className="text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Edit"
+                                   >
                                         <Edit3 className="w-4 h-4" />
                                     </button>
-                                    <button className="text-slate-400 hover:text-amber-500 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Pause">
+                                    <button 
+                                        onClick={() => toggleServiceStatus(svc.id)}
+                                        className="text-slate-400 hover:text-amber-500 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" 
+                                        title={svc.status === 'Active' ? "Pause" : "Activate"}
+                                    >
                                         <PauseOctagon className="w-4 h-4" />
                                     </button>
                                 </div>
-                                <button className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                                <button 
+                                    onClick={() => deleteService(svc.id)}
+                                    className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"
+                                >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
