@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Bookmark,
@@ -18,6 +18,18 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+const CLEARED_KEY = "ceygo_nav_cleared";
+function getClearedLabels(): string[] {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(CLEARED_KEY) || "[]"); } catch { return []; }
+}
+function clearNavLabel(label: string) {
+    const cleared = getClearedLabels();
+    if (!cleared.includes(label)) {
+        localStorage.setItem(CLEARED_KEY, JSON.stringify([...cleared, label]));
+    }
+}
 
 // Mock Data
 const navItems = [
@@ -69,6 +81,17 @@ const journeys = [
 
 export default function MyVerifiedJourneysPage() {
     const [hoveredJourney, setHoveredJourney] = useState<number | null>(null);
+    const [clearedLabels, setClearedLabels] = useState<string[]>([]);
+
+    useEffect(() => {
+        clearNavLabel("My Verified Journeys");
+        setClearedLabels(getClearedLabels());
+    }, []);
+
+    const handleNavClick = (label: string) => {
+        clearNavLabel(label);
+        setClearedLabels(getClearedLabels());
+    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
@@ -81,10 +104,13 @@ export default function MyVerifiedJourneysPage() {
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
+                    {navItems.map(({ icon: Icon, label, active, count, href }) => {
+                        const displayCount = clearedLabels.includes(label) ? 0 : count;
+                        return (
                         <Link
                             key={label}
                             href={href}
+                            onClick={() => handleNavClick(label)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                 ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                 : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -94,11 +120,12 @@ export default function MyVerifiedJourneysPage() {
                                 <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
                                 <span>{label}</span>
                             </div>
-                            {count > 0 && (
-                                <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{count}</span>
+                            {displayCount > 0 && (
+                                <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{displayCount}</span>
                             )}
                         </Link>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
