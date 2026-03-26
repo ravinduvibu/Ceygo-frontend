@@ -64,9 +64,15 @@ const conversations = [
 export default function Inbox() {
     const [activeConvoId, setActiveConvoId] = useState(conversations[0].id);
     const [inputText, setInputText] = useState("");
+    const [filter, setFilter] = useState("All");
     
     // In a real app we'd use complex state, but here we'll just derive it
     const activeConvo = conversations.find(c => c.id === activeConvoId) || conversations[0];
+
+    const filteredConversations = conversations.filter(c => {
+        if (filter === "Unread") return c.unread > 0;
+        return true;
+    });
 
     return (
         <div className="w-full h-[calc(100vh-140px)] animate-in fade-in duration-500 flex flex-col">
@@ -95,15 +101,27 @@ export default function Inbox() {
                             />
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button className="flex-1 py-1.5 text-xs font-bold text-slate-800 bg-slate-200/50 rounded-lg hover:bg-slate-200 transition-colors">All</button>
-                            <button className="flex-1 py-1.5 text-xs font-bold text-slate-500 bg-transparent rounded-lg hover:bg-slate-100 transition-colors">Unread</button>
-                            <button className="flex-1 py-1.5 text-xs font-bold text-slate-500 bg-transparent rounded-lg hover:bg-slate-100 transition-colors">Starred</button>
+                            <button 
+                                onClick={() => setFilter("All")}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${filter === "All" ? "text-slate-800 bg-slate-200/50" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
+                            >
+                                All
+                            </button>
+                            <button 
+                                onClick={() => setFilter("Unread")}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${filter === "Unread" ? "text-slate-800 bg-slate-200/50" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
+                            >
+                                Unread
+                            </button>
                         </div>
                     </div>
 
                     {/* Thread List */}
                     <div className="flex-1 overflow-y-auto">
-                        {conversations.map((convo) => (
+                        {filteredConversations.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500 text-sm font-medium">No conversations found.</div>
+                        ) : (
+                            filteredConversations.map((convo) => (
                             <div 
                                 key={convo.id} 
                                 onClick={() => setActiveConvoId(convo.id)}
@@ -146,8 +164,9 @@ export default function Inbox() {
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )))}
                     </div>
+
                 </div>
 
                 {/* Right Pane - Active Conversation Area */}

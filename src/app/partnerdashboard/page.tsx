@@ -23,6 +23,7 @@ import MyServices from "@/components/partner/MyServices";
 import ActiveOrders from "@/components/partner/ActiveOrders";
 import Inbox from "@/components/partner/Inbox";
 import Earnings from "@/components/partner/Earnings";
+import CreateServiceModal from "@/components/partner/CreateServiceModal";
 
 const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", count: 0 },
@@ -38,7 +39,7 @@ const activeOrders = [
     { id: "ORD-938", buyer: "David M.", service: "Colombo Local Street Food", date: "Mar 22, 2026", price: "LKR 4,500", status: "Completed", color: "emerald" },
 ];
 
-const myServices = [
+const initialDashboardServices = [
     { id: 1, title: "I will take you on a Sunset TukTuk City Tour", image: "🛺", activeOrders: 2, price: "LKR 2,800", rating: 4.8, reviews: 112 },
     { id: 2, title: "I will show you hidden Colombo Street Food", image: "🍛", activeOrders: 0, price: "LKR 4,500", rating: 5.0, reviews: 24 },
     { id: 3, title: "I will drive you to Ella safely (One-way)", image: "🚗", activeOrders: 1, price: "LKR 15,000", rating: 4.9, reviews: 8 },
@@ -63,8 +64,29 @@ function StarRating({ rating }: { rating: number }) {
 
 export default function PartnerDashboard() {
     const [activeTab, setActiveTab] = useState("Dashboard");
+    const [dashboardServices, setDashboardServices] = useState(initialDashboardServices);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const handleAddDashboardService = (newSvc: any) => {
+        // Map the modal service to dashboard service format
+        setDashboardServices([{
+            id: newSvc.id,
+            title: newSvc.title,
+            image: newSvc.emoji || "✨",
+            activeOrders: 0,
+            price: newSvc.price,
+            rating: 0,
+            reviews: 0
+        }, ...dashboardServices]);
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
+            <CreateServiceModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                onAddService={handleAddDashboardService} 
+            />
 
             {/* ── Sidebar ── */}
             <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm">
@@ -235,13 +257,16 @@ export default function PartnerDashboard() {
                                 <div>
                                     <div className="flex items-center justify-between mb-4 mt-2">
                                         <h2 className="text-base font-bold text-slate-900">My Services (Gigs)</h2>
-                                        <button className="flex items-center space-x-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-emerald-200 transition-colors">
+                                        <button 
+                                            onClick={() => setIsCreateModalOpen(true)}
+                                            className="flex items-center space-x-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-emerald-200 transition-colors"
+                                        >
                                             <Plus className="w-4 h-4" />
                                             <span>Create New Service</span>
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
-                                        {myServices.map((svc) => (
+                                        {dashboardServices.map((svc) => (
                                             <div key={svc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group">
                                                 <div className="h-32 bg-slate-100 flex items-center justify-center text-5xl border-b border-slate-100 group-hover:bg-emerald-50 transition-colors cursor-pointer relative">
                                                     {svc.image}
@@ -308,7 +333,10 @@ export default function PartnerDashboard() {
                                     </div>
                                     
                                     <div className="p-4 border-t border-slate-100 bg-slate-50">
-                                        <button className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shadow-sm">
+                                        <button 
+                                            onClick={() => setActiveTab("Inbox")}
+                                            className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shadow-sm"
+                                        >
                                             View All Conversations
                                         </button>
                                     </div>

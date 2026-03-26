@@ -256,7 +256,7 @@ export default function ActiveOrders() {
                                                 {order.status === "In Progress" || order.status === "Priority" ? (
                                                     <button className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-emerald-200 transition-all flex items-center space-x-1.5">
                                                         <UploadCloud className="w-3.5 h-3.5" />
-                                                        <span>Deliver</span>
+                                                        <span>Confirm Order</span>
                                                     </button>
                                                 ) : (
                                                     <button className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-all">
