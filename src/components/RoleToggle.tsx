@@ -19,9 +19,9 @@ export default function RoleToggle({ roles, defaultRole, onRoleChange }: RoleTog
     const isFirstActive = activeRole === roles[0];
 
     return (
-        <div className="relative flex w-full rounded-full bg-slate-100 p-1 shadow-inner">
+        <div className="relative flex w-full rounded-full bg-slate-100 p-1 shadow-inner overflow-hidden">
             <div
-                className={`absolute left-1 top-1 h-[calc(100%-8px)] w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${isFirstActive ? "translate-x-0" : "translate-x-[calc(100%+8px)]"
+                className={`absolute inset-1 w-1/2 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${isFirstActive ? "translate-x-0" : "translate-x-full"
                     }`}
             />
             {roles.map((role) => (

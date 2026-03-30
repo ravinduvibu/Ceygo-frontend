@@ -201,9 +201,9 @@ export default function Home() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <div className="flex justify-end pt-1">
-                  <a href="#" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
+                  <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
               </div>
 

@@ -565,14 +565,14 @@ export default function UserManagement() {
                                                         <button
                                                             disabled={hardLocked}
                                                             onClick={() => !hardLocked && togglePerm(key)}
-                                                            className={`relative w-9 h-5 rounded-full transition-all duration-200 flex-shrink-0 ml-2 ${hardLocked
+                                                            className={`relative w-9 h-5 rounded-full transition-all duration-200 flex-shrink-0 ml-2 outline-none ${hardLocked
                                                                     ? "bg-slate-200 cursor-not-allowed"
                                                                     : isOn
                                                                         ? "bg-emerald-500 hover:bg-emerald-600 cursor-pointer"
                                                                         : "bg-slate-200 hover:bg-slate-300 cursor-pointer"
                                                                 }`}
                                                         >
-                                                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isOn ? "translate-x-4" : "translate-x-0.5"
+                                                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isOn ? "translate-x-4" : "translate-x-0"
                                                                 }`} />
                                                         </button>
                                                     </div>

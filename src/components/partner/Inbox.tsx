@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { 
     Search, 
     MoreVertical, 
@@ -10,9 +10,21 @@ import {
     Image as ImageIcon,
     Clock,
     AlertCircle,
-    Star
+    Star,
+    X
 } from "lucide-react";
 import Image from "next/image";
+
+const QUICK_REPLIES = [
+    "Hi! Thanks for reaching out. I'd be happy to help you!",
+    "Yes, I'm available on that date. Please go ahead and book!",
+    "I'll pick you up from your hotel lobby. Just send me your hotel name.",
+    "The tour usually takes about 3 hours including all stops.",
+    "Payment is handled securely through the Ceygo platform.",
+    "I'll be there 5 minutes early. Please look out for me!",
+];
+
+const EMOJIS = ["😊","👍","🙏","🌟","✅","🎉","😄","❤️","🔥","👋","🤝","🌴","🚗","📸","💬","⭐","😎","🙌","💯","🎊"];
 
 // Mock data
 const conversations = [
@@ -61,18 +73,84 @@ const conversations = [
     }
 ];
 
+type Message = { id: number; sender: string; text?: string; imageUrl?: string; time: string; isMe?: boolean; isSystem?: boolean; status?: string };
+type ConvoMessages = Record<string, Message[]>;
+
 export default function Inbox() {
     const [activeConvoId, setActiveConvoId] = useState(conversations[0].id);
     const [inputText, setInputText] = useState("");
     const [filter, setFilter] = useState("All");
-    
-    // In a real app we'd use complex state, but here we'll just derive it
+    const [showEmoji, setShowEmoji] = useState(false);
+    const [showQuickReply, setShowQuickReply] = useState(false);
+    const [attachedImage, setAttachedImage] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Local message state seeded from mock data
+    const [allMessages, setAllMessages] = useState<ConvoMessages>(() =>
+        Object.fromEntries(conversations.map(c => [c.id, c.messages as Message[]]))
+    );
+
     const activeConvo = conversations.find(c => c.id === activeConvoId) || conversations[0];
+    const messages = allMessages[activeConvoId] || [];
 
     const filteredConversations = conversations.filter(c => {
         if (filter === "Unread") return c.unread > 0;
         return true;
     });
+
+    // Auto-scroll to bottom on new messages
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, activeConvoId]);
+
+    const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    const sendMessage = () => {
+        if (!inputText.trim() && !attachedImage) return;
+        const newMsg: Message = {
+            id: Date.now(),
+            sender: "Me",
+            text: inputText.trim() || undefined,
+            imageUrl: attachedImage || undefined,
+            time: now(),
+            isMe: true,
+            status: "delivered",
+        };
+        setAllMessages(prev => ({ ...prev, [activeConvoId]: [...(prev[activeConvoId] || []), newMsg] }));
+        setInputText("");
+        setAttachedImage(null);
+        setShowEmoji(false);
+        setShowQuickReply(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => setAttachedImage(ev.target?.result as string);
+        reader.readAsDataURL(file);
+        e.target.value = "";
+    };
+
+    const insertQuickReply = (text: string) => {
+        setInputText(text);
+        setShowQuickReply(false);
+        textareaRef.current?.focus();
+    };
+
+    const insertEmoji = (emoji: string) => {
+        setInputText(prev => prev + emoji);
+        textareaRef.current?.focus();
+    };
 
     return (
         <div className="w-full h-[calc(100vh-140px)] animate-in fade-in duration-500 flex flex-col">
@@ -223,17 +301,17 @@ export default function Inbox() {
                     </div>
 
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         <div className="flex justify-center">
-                            <span className="text-xs font-bold text-slate-400 bg-slate-200/50 px-3 py-1 rounded-full text-center">
-                                Today, April 2nd
+                            <span className="text-xs font-bold text-slate-400 bg-slate-200/50 px-3 py-1 rounded-full">
+                                Today, March 30th
                             </span>
                         </div>
-                        
-                        {activeConvo.messages.map((msg) => {
+
+                        {messages.map((msg) => {
                             if (msg.isSystem) {
                                 return (
-                                    <div key={msg.id} className="flex justify-center my-4">
+                                    <div key={msg.id} className="flex justify-center my-2">
                                         <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm">
                                             <AlertCircle className="w-4 h-4" />
                                             <span>{msg.text}</span>
@@ -241,7 +319,6 @@ export default function Inbox() {
                                     </div>
                                 );
                             }
-
                             return (
                                 <div key={msg.id} className={`flex w-full ${msg.isMe ? "justify-end" : "justify-start"}`}>
                                     {!msg.isMe && (
@@ -249,25 +326,31 @@ export default function Inbox() {
                                             {activeConvo.user.avatar}
                                         </div>
                                     )}
-                                    
                                     <div className={`flex flex-col max-w-[70%] ${msg.isMe ? "items-end" : "items-start"}`}>
-                                        <div className={`px-4 py-3 rounded-2xl shadow-sm relative ${
-                                            msg.isMe 
-                                                ? "bg-emerald-500 text-white rounded-br-sm" 
-                                                : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
-                                        }`}>
-                                            <p className="text-sm leading-relaxed">{msg.text}</p>
-                                        </div>
-                                        <div className="flex items-center space-x-1 mt-1.5 px-1">
+                                        {/* Image attachment */}
+                                        {msg.imageUrl && (
+                                            <div className={`mb-1 rounded-2xl overflow-hidden border shadow-sm ${ msg.isMe ? "border-emerald-400" : "border-slate-200" }`}>
+                                                <img src={msg.imageUrl} alt="attachment" className="max-w-[220px] max-h-[180px] object-cover" />
+                                            </div>
+                                        )}
+                                        {msg.text && (
+                                            <div className={`px-4 py-3 rounded-2xl shadow-sm ${
+                                                msg.isMe
+                                                    ? "bg-emerald-500 text-white rounded-br-sm"
+                                                    : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
+                                            }`}>
+                                                <p className="text-sm leading-relaxed">{msg.text}</p>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center space-x-1 mt-1 px-1">
                                             <span className="text-[10px] font-medium text-slate-400">{msg.time}</span>
                                             {msg.isMe && (
-                                                msg.status === "read" 
+                                                msg.status === "read"
                                                     ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
                                                     : <Check className="w-3.5 h-3.5 text-slate-400" />
                                             )}
                                         </div>
                                     </div>
-
                                     {msg.isMe && (
                                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 flex-shrink-0 ml-3 mt-auto shadow-sm">
                                             Me
@@ -276,38 +359,134 @@ export default function Inbox() {
                                 </div>
                             );
                         })}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     {/* Chat Input Area */}
-                    <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0 z-10">
+                    <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0 z-10 relative">
+
+                        {/* ── Quick Reply Panel ── */}
+                        {showQuickReply && (
+                            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-20 animate-in slide-in-from-bottom-2 duration-200">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Quick Replies</p>
+                                    <button onClick={() => setShowQuickReply(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    {QUICK_REPLIES.map((reply, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => insertQuickReply(reply)}
+                                            className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border-b border-slate-50 last:border-0 font-medium"
+                                        >
+                                            {reply}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Emoji Picker ── */}
+                        {showEmoji && (
+                            <div className="absolute bottom-full right-4 mb-2 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-20 animate-in slide-in-from-bottom-2 duration-200">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-bold text-slate-500">Emoji</p>
+                                    <button onClick={() => setShowEmoji(false)} className="p-0.5 text-slate-400 hover:text-slate-600 rounded transition-colors">
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-5 gap-1">
+                                    {EMOJIS.map((emoji, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => insertEmoji(emoji)}
+                                            className="w-9 h-9 flex items-center justify-center text-xl hover:bg-slate-100 rounded-lg transition-colors"
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Image Preview ── */}
+                        {attachedImage && (
+                            <div className="mb-3 flex items-start gap-2">
+                                <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                                    <img src={attachedImage} alt="preview" className="max-h-24 max-w-[160px] object-cover" />
+                                    <button
+                                        onClick={() => setAttachedImage(null)}
+                                        className="absolute top-1 right-1 bg-slate-900/60 hover:bg-slate-900/80 text-white rounded-full p-0.5 transition-colors"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                <p className="text-xs font-medium text-slate-400 mt-1">Image ready to send</p>
+                            </div>
+                        )}
+
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+
+                        {/* Input Row */}
                         <div className="flex items-end space-x-3 bg-slate-50 border border-slate-200 rounded-2xl p-2 shadow-inner focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
-                            <button className="p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-white rounded-xl transition-all h-[42px]">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`p-2.5 rounded-xl transition-all h-[42px] ${ attachedImage ? "text-emerald-500 bg-emerald-50" : "text-slate-400 hover:text-emerald-500 hover:bg-white" }`}
+                                title="Attach image"
+                            >
                                 <Paperclip className="w-5 h-5" />
                             </button>
-                            <textarea 
+                            <textarea
+                                ref={textareaRef}
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 placeholder={`Write a message to ${activeConvo.user.name}...`}
                                 className="flex-1 max-h-32 min-h-[42px] bg-transparent resize-none focus:outline-none text-sm font-medium py-3 text-slate-700 placeholder:text-slate-400"
                                 rows={1}
                             />
                             <div className="flex items-center space-x-1 h-[42px] pr-1">
-                                <button className="p-2 text-slate-400 hover:text-amber-500 hover:bg-white rounded-xl transition-all">
+                                <button
+                                    onClick={() => { setShowEmoji(v => !v); setShowQuickReply(false); }}
+                                    className={`p-2 rounded-xl transition-all ${ showEmoji ? "text-amber-500 bg-amber-50" : "text-slate-400 hover:text-amber-500 hover:bg-white" }`}
+                                    title="Emoji"
+                                >
                                     <Smile className="w-5 h-5" />
                                 </button>
-                                <button className="px-4 h-[36px] bg-[#ff6b35] hover:bg-[#e55a2b] active:scale-95 text-white font-bold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm shadow-orange-200">
+                                <button
+                                    onClick={sendMessage}
+                                    disabled={!inputText.trim() && !attachedImage}
+                                    className="px-4 h-[36px] bg-[#ff6b35] hover:bg-[#e55a2b] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all flex items-center space-x-2 shadow-sm shadow-orange-200"
+                                >
                                     <span>Send</span>
                                     <Send className="w-4 h-4 ml-1" />
                                 </button>
                             </div>
                         </div>
+
+                        {/* Bottom toolbar */}
                         <div className="flex items-center justify-between mt-2 px-2">
                             <div className="flex items-center space-x-4">
-                                <button className="text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors flex items-center space-x-1">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`text-xs font-bold transition-colors flex items-center space-x-1 ${ attachedImage ? "text-emerald-600" : "text-slate-400 hover:text-emerald-600" }`}
+                                >
                                     <ImageIcon className="w-3.5 h-3.5" />
                                     <span>Attach Image</span>
                                 </button>
-                                <button className="text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors flex items-center space-x-1">
+                                <button
+                                    onClick={() => { setShowQuickReply(v => !v); setShowEmoji(false); }}
+                                    className={`text-xs font-bold transition-colors flex items-center space-x-1 ${ showQuickReply ? "text-emerald-600" : "text-slate-400 hover:text-emerald-600" }`}
+                                >
                                     <Clock className="w-3.5 h-3.5" />
                                     <span>Use Quick Reply</span>
                                 </button>

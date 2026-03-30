@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, MoreHorizontal, Star, Image as ImageIcon, Eye, MousePointerClick, CalendarCheck2, Clock, Trash2, Edit3, PauseOctagon } from "lucide-react";
+import { Plus, Star, Image as ImageIcon, Eye, MousePointerClick, CalendarCheck2, Trash2, Edit3, PauseCircle, PlayCircle } from "lucide-react";
 import Image from "next/image";
 import CreateServiceModal from "./CreateServiceModal";
+import EditServiceModal from "./EditServiceModal";
 
 // Extended mock data for services
 const initialServices = [
@@ -46,37 +47,93 @@ const initialServices = [
     },
 ];
 
+type Toast = { id: number; message: string; type: "pause" | "resume" | "delete" };
+
 export default function MyServices() {
     const [services, setServices] = useState(initialServices);
     const [filter, setFilter] = useState("All");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingService, setEditingService] = useState<typeof initialServices[0] | null>(null);
+    const [toasts, setToasts] = useState<Toast[]>([]);
+
+    const showToast = (message: string, type: Toast["type"]) => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    };
 
     const deleteService = (id: number) => {
         setServices(services.filter(s => s.id !== id));
+        showToast("Service deleted.", "delete");
     };
 
     const toggleServiceStatus = (id: number) => {
+        let nextStatus = "";
         setServices(services.map(s => {
             if (s.id === id) {
-                return { ...s, status: s.status === 'Active' ? 'Paused' : 'Active' };
+                nextStatus = s.status === "Active" ? "Paused" : "Active";
+                return { ...s, status: nextStatus };
             }
             return s;
         }));
+        setTimeout(() => {
+            showToast(
+                nextStatus === "Paused" ? "Service paused successfully." : "Service is now live!",
+                nextStatus === "Paused" ? "pause" : "resume"
+            );
+        }, 0);
     };
 
     const handleAddService = (newService: any) => {
         setServices([newService, ...services]);
     };
 
+    const handleSaveEdit = (updated: typeof initialServices[0]) => {
+        setServices(services.map(s => s.id === updated.id ? updated : s));
+        showToast("Service updated successfully!", "resume");
+    };
+
     const filteredServices = services.filter((svc) => filter === "All" || svc.status === filter);
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-            
-            <CreateServiceModal 
-                isOpen={isCreateModalOpen} 
-                onClose={() => setIsCreateModalOpen(false)} 
-                onAddService={handleAddService} 
+
+            {/* ── Toast Stack ── */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+                {toasts.map(toast => (
+                    <div
+                        key={toast.id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold animate-in slide-in-from-right-4 fade-in duration-300 pointer-events-auto ${
+                            toast.type === "pause"
+                                ? "bg-amber-50 border-amber-200 text-amber-800"
+                                : toast.type === "delete"
+                                ? "bg-red-50 border-red-200 text-red-700"
+                                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        }`}
+                    >
+                        {toast.type === "pause" && <PauseCircle className="w-4 h-4 text-amber-500 shrink-0" />}
+                        {toast.type === "resume" && <PlayCircle className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        {toast.type === "delete" && (
+                            <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        )}
+                        {toast.message}
+                    </div>
+                ))}
+            </div>
+
+            <CreateServiceModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onAddService={handleAddService}
+            />
+
+            <EditServiceModal
+                service={editingService}
+                isOpen={editingService !== null}
+                onClose={() => setEditingService(null)}
+                onSave={handleSaveEdit}
             />
 
             {/* Header section */}
@@ -226,24 +283,39 @@ export default function MyServices() {
                             
                             {/* Footer Actions */}
                             <div className="bg-slate-50 border-t border-slate-100 px-5 py-3 flex items-center justify-between">
-                                <div className="flex space-x-2">
-                                    <button 
-                                        onClick={() => alert("Edit service functionality coming soon!")}
-                                        className="text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Edit"
-                                   >
-                                        <Edit3 className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                        onClick={() => toggleServiceStatus(svc.id)}
-                                        className="text-slate-400 hover:text-amber-500 p-1.5 rounded-lg hover:bg-amber-50 transition-colors" 
-                                        title={svc.status === 'Active' ? "Pause" : "Activate"}
+                                <div className="flex space-x-1">
+                                    {/* Edit */}
+                                    <button
+                                        onClick={() => setEditingService(svc)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                        title="Edit service"
                                     >
-                                        <PauseOctagon className="w-4 h-4" />
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        Edit
+                                    </button>
+
+                                    {/* Pause / Resume */}
+                                    <button
+                                        onClick={() => toggleServiceStatus(svc.id)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                            svc.status === "Active"
+                                                ? "text-slate-500 hover:text-amber-700 hover:bg-amber-50"
+                                                : "text-amber-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                        }`}
+                                        title={svc.status === "Active" ? "Pause service" : "Resume service"}
+                                    >
+                                        {svc.status === "Active"
+                                            ? <><PauseCircle className="w-3.5 h-3.5" /> Pause</>
+                                            : <><PlayCircle className="w-3.5 h-3.5" /> Resume</>
+                                        }
                                     </button>
                                 </div>
-                                <button 
+
+                                {/* Delete */}
+                                <button
                                     onClick={() => deleteService(svc.id)}
-                                    className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Delete service"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
