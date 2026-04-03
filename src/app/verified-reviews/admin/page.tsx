@@ -226,9 +226,38 @@ const initialNotifications: Notification[] = [
 
 export default function VerifiedReviewsPage() {
     const [search, setSearch] = useState("");
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
     const [filterStatus, setFilterStatus] = useState<VerificationStatus | "All">("All");
     const [selectedReview, setSelectedReview] = useState<Review | null>(reviews.find(r => r.moderationStatus === "Flagged") ?? null);
+    
+    // Moderation Decision States
+    const [pendingAction, setPendingAction] = useState<string | null>(null);
+    const [moderationReason, setModerationReason] = useState("");
     const [moderationAction, setModerationAction] = useState<string | null>(null);
+
+    const handleSearchChange = (val: string) => {
+        setSearch(val);
+        if (val.length > 0 && val.length < 2) {
+            setSearchError("Min 2 chars");
+        } else {
+            setSearchError(null);
+            setIsSearching(true);
+            setTimeout(() => setIsSearching(false), 300);
+        }
+    };
+
+    const confirmModerationAction = () => {
+        if (moderationReason.length >= 10) {
+            setModerationAction(pendingAction);
+            setPendingAction(null);
+        }
+    };
+
+    const cancelModerationAction = () => {
+        setPendingAction(null);
+        setModerationReason("");
+    };
 
     // Notifications
     const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
@@ -331,10 +360,22 @@ export default function VerifiedReviewsPage() {
                         <p className="text-xs text-slate-400">Transaction-locked trust system · PDPA Compliant</p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 w-52">
-                            <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                            <input value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent text-sm placeholder-slate-400 outline-none flex-1" placeholder="Search reviews..." />
+                        <div className={`flex items-center space-x-2 bg-slate-50 rounded-xl px-3 py-2 border transition-colors w-52 ${searchError ? "border-red-300" : "border-slate-200"}`}>
+                            {isSearching ? (
+                                <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+                            ) : (
+                                <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                            )}
+                            <input 
+                                value={search} 
+                                onChange={e => handleSearchChange(e.target.value)} 
+                                className="bg-transparent text-sm placeholder-slate-400 outline-none flex-1" 
+                                placeholder="Search reviews..." 
+                            />
                         </div>
+                        {searchError && (
+                            <span className="text-[10px] font-bold text-red-500 animate-in fade-in slide-in-from-right-1">{searchError}</span>
+                        )}
                         {/* ── Notification Bell ── */}
                         <div className="relative" ref={notifRef}>
                             <button
@@ -566,39 +607,73 @@ export default function VerifiedReviewsPage() {
                             </div>
 
                             {/* Moderation actions */}
-                            <div className="px-5 py-4 border-t border-slate-100 space-y-2">
+                            <div className="px-5 py-4 border-t border-slate-100 space-y-3 bg-slate-50/30">
                                 {moderationAction ? (
-                                    <div className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl border text-sm font-semibold ${moderationAction === "approved"
+                                    <div className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-bold ${moderationAction === "approved"
                                             ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                                             : moderationAction === "hidden"
                                                 ? "bg-amber-50 text-amber-700 border-amber-100"
                                                 : "bg-red-50 text-red-600 border-red-100"
                                         }`}>
-                                        <CheckCircle2 className="w-4 h-4" />
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
                                         <span>{moderationAction === "approved" ? "Review Approved & Live" : moderationAction === "hidden" ? "Review Hidden from Public" : "Review Permanently Removed"}</span>
+                                    </div>
+                                ) : pendingAction ? (
+                                    <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Confirm {pendingAction} Action</p>
+                                            <button onClick={cancelModerationAction} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">Cancel</button>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold text-slate-500">Reason for resolution (Audit Trail)</label>
+                                            <textarea 
+                                                value={moderationReason}
+                                                onChange={(e) => setModerationReason(e.target.value)}
+                                                className={`w-full text-xs p-3 rounded-xl border outline-none min-h-[80px] focus:ring-2 focus:ring-[#ff6b35]/20 ${moderationReason.length > 0 && moderationReason.length < 10 ? "border-red-200" : "border-slate-200 focus:border-[#ff6b35]"}`}
+                                                placeholder="Describe why this action was taken..."
+                                            />
+                                            <div className="flex items-center justify-between">
+                                                <p className={`text-[9px] font-bold ${moderationReason.length >= 10 ? "text-emerald-500" : "text-slate-400"}`}>
+                                                    {moderationReason.length}/10 chars min
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            disabled={moderationReason.length < 10}
+                                            onClick={confirmModerationAction}
+                                            className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 shadow-sm ${
+                                                moderationReason.length < 10 
+                                                ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
+                                                : "bg-[#ff6b35] hover:bg-[#e85a20] text-white shadow-[#ff6b35]/20"
+                                            }`}
+                                        >
+                                            <span>Finalize {pendingAction}</span>
+                                        </button>
                                     </div>
                                 ) : (
                                     <>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Moderation Actions</p>
                                         <button onClick={() => setModerationAction("approved")}
-                                            className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center justify-center space-x-2 shadow-sm shadow-emerald-200">
+                                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white text-xs font-bold transition-all flex items-center justify-center space-x-2 shadow-sm shadow-emerald-200">
                                             <CheckCircle2 className="w-3.5 h-3.5" /><span>Approve & Keep Live</span>
                                         </button>
-                                        <button onClick={() => setModerationAction("hidden")}
-                                            className="w-full py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200 hover:bg-amber-100 transition-colors flex items-center justify-center space-x-2">
-                                            <EyeOff className="w-3.5 h-3.5" /><span>Hide from Public View</span>
-                                        </button>
-                                        <button onClick={() => setModerationAction("removed")}
-                                            className="w-full py-2 rounded-xl bg-slate-50 text-red-500 text-xs font-semibold border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-colors flex items-center justify-center space-x-2">
-                                            <Trash2 className="w-3.5 h-3.5" /><span>Remove Permanently</span>
-                                        </button>
-                                        <button className="w-full py-2 rounded-xl bg-slate-50 text-slate-500 text-xs font-semibold border border-slate-200 hover:bg-slate-100 transition-colors flex items-center justify-center space-x-2">
-                                            <Flag className="w-3.5 h-3.5" /><span>Escalate to Verification Queue</span>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={() => setPendingAction("hidden")}
+                                                className="py-2.5 rounded-xl bg-white text-amber-700 text-[11px] font-bold border border-amber-200 hover:bg-amber-50 transition-colors flex items-center justify-center space-x-1.5">
+                                                <EyeOff className="w-3.5 h-3.5" /><span>Hide</span>
+                                            </button>
+                                            <button onClick={() => setPendingAction("removed")}
+                                                className="py-2.5 rounded-xl bg-white text-red-500 text-[11px] font-bold border border-red-200 hover:bg-red-50 transition-colors flex items-center justify-center space-x-1.5">
+                                                <Trash2 className="w-3.5 h-3.5" /><span>Remove</span>
+                                            </button>
+                                        </div>
+                                        <button className="w-full py-2.5 rounded-xl bg-slate-50 text-slate-500 text-xs font-semibold border border-slate-200 hover:bg-slate-100 transition-colors flex items-center justify-center space-x-2">
+                                            <Flag className="w-3.5 h-3.5" /><span>Escalate to Queue</span>
                                         </button>
                                     </>
                                 )}
                                 {moderationAction && (
-                                    <button onClick={() => setModerationAction(null)} className="w-full text-xs text-slate-400 hover:text-slate-600 underline text-center">Reset</button>
+                                    <button onClick={() => { setModerationAction(null); setModerationReason(""); }} className="w-full text-xs text-slate-400 hover:text-slate-600 underline text-center">Reset Decision</button>
                                 )}
                             </div>
                         </div>
