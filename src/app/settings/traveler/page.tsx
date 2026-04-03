@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     LayoutDashboard,
     Bookmark,
@@ -21,75 +21,189 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import TravelerSidebar from "@/components/TravelerSidebar";
 
-const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", active: false, count: 0, href: "/dashboard" },
-    { icon: Bookmark, label: "My Verified Journeys", active: false, count: 3, href: "/dashboard/My-Verified-Journeys" },
-    { icon: MessageSquare, label: "Message Artisan", active: false, count: 2, href: "/messages" },
-    { icon: Compass, label: "Find Experiences", active: false, count: 0, href: "/search" },
-    { icon: Heart, label: "Wishlist", active: false, count: 0, href: "/wishlist" },
-    { icon: Star, label: "Verified Reviews", active: false, count: 0, href: "/verified-reviews/traveler" },
-    { icon: BookOpen, label: "Platform Guide", active: false, count: 0, href: "/guide" },
-    { icon: Settings, label: "Settings", active: true, count: 0, href: "/settings/traveler" },
-];
+// Note: navItems is now managed inside TravelerSidebar.
 
 export default function TravelerSettings() {
     const [activeTab, setActiveTab] = useState("profile");
+    
+    // Form States
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [userId, setUserId] = useState("");
+    const [fullName, setFullName] = useState("");
+    const [email, setEmail] = useState("");
+    const [bio, setBio] = useState("");
+    const [avatar, setAvatar] = useState("");
+    
+    // Alert States
+    const [errorMsg, setErrorMsg] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        async function loadProfile() {
+            setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                router.push('/signin');
+                return;
+            }
+
+            setUserId(session.user.id);
+            setEmail(session.user.email || "");
+            
+            const { data, error } = await supabase
+                .from('users')
+                .select('full_name, bio, avatar_base64')
+                .eq('id', session.user.id)
+                .single();
+                
+            if (data) {
+                setFullName(data.full_name || "");
+                setBio(data.bio || "");
+                setAvatar(data.avatar_base64 || "");
+            }
+            setLoading(false);
+        }
+        
+        loadProfile();
+    }, [router]);
+
+    // Handle Image Upload and Compression
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        // Ensure it's an image
+        if (!file.type.startsWith('image/')) {
+            setErrorMsg("Please upload a valid image file.");
+            setTimeout(() => setErrorMsg(""), 4000);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const MAX_WIDTH = 150;
+                const MAX_HEIGHT = 150;
+                let width = img.width;
+                let height = img.height;
+
+                // Circular/Square crop mathematically
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+                ctx?.drawImage(img, 0, 0, width, height);
+                // Compress to JPEG with 0.6 quality to ensure tiny size
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+                setAvatar(dataUrl);
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        setErrorMsg("");
+        setSuccessMsg("");
+
+        try {
+            // Get fresh session directly - don't rely on userId state timing
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setErrorMsg("You are not logged in. Please sign in again.");
+                return;
+            }
+
+            const liveUserId = session.user.id;
+            console.log("Saving for user:", liveUserId);
+            console.log("Payload:", { full_name: fullName, bio, avatar_base64: avatar ? "HAS_AVATAR" : "NO_AVATAR" });
+
+            // 1. Update Public Profile Table
+            const { data: updateData, error: dbError, count } = await supabase
+                .from('users')
+                .update({ 
+                    full_name: fullName, 
+                    bio: bio,
+                    avatar_base64: avatar
+                })
+                .eq('id', liveUserId)
+                .select(); // .select() forces Supabase to return the updated row
+
+            console.log("Update result:", { updateData, dbError, count });
+
+            if (dbError) throw dbError;
+
+            if (!updateData || updateData.length === 0) {
+                throw new Error("Update matched 0 rows. Your user row may be missing from public.users.");
+            }
+
+            // 2. Optional: Update Auth Email if changed
+            const { data: { user } } = await supabase.auth.getUser();
+            let emailNotice = "";
+            if (user && user.email !== email) {
+                const { error: authError } = await supabase.auth.updateUser({ email });
+                if (authError) throw authError;
+                emailNotice = " Check your inbox to confirm your new email!";
+            }
+
+            setSuccessMsg(`Profile saved successfully!${emailNotice}`);
+            setTimeout(() => setSuccessMsg(""), 5000);
+
+        } catch (error: any) {
+            console.error("SUPABASE SAVE ERROR:", error);
+            alert("Save failed: " + (error.message || JSON.stringify(error)));
+            setErrorMsg(error.message || "Failed to save profile.");
+            setTimeout(() => setErrorMsg(""), 6000);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+
+    // Helper for Avatar Initials
+    const initials = fullName ? fullName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "AA";
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
-            {/* ── Sidebar ── */}
-            <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm">
-                <div className="px-5 py-5 flex items-center space-x-3 border-b border-slate-100">
-                    <div className="relative h-9 w-28">
-                        <Image src="/images/logo_transparent.png" alt="Ceygo" fill className="object-contain" priority />
-                    </div>
+        <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800 relative">
+            
+            {/* Error Toast */}
+            <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${errorMsg ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"}`}>
+                <div className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-red-900/95 backdrop-blur-md text-white shadow-2xl border border-red-800">
+                    <span className="text-sm font-semibold tracking-wide">{errorMsg}</span>
                 </div>
+            </div>
 
-                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count, href }) => (
-                        <Link
-                            key={label}
-                            href={href}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
-                                    ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
-                                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                                }`}
-                        >
-                            <div className="flex items-center space-x-3">
-                                <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
-                                <span>{label}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                                {count > 0 && (
-                                    <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{count}</span>
-                                )}
-                                {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
-                            </div>
-                        </Link>
-                    ))}
-                </nav>
-
-                <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                            AL
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">Alex Müller</p>
-                            <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
-                        </div>
-                        <Link 
-                            href="/" 
-                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
-                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
-                            title="Log out"
-                        >
-                            <LogOut className="w-4 h-4" />
-                        </Link>
-                    </div>
+            {/* Success Toast */}
+            <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${successMsg ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"}`}>
+                <div className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-emerald-900/95 backdrop-blur-md text-white shadow-2xl border border-emerald-800">
+                    <span className="text-sm font-semibold tracking-wide">{successMsg}</span>
                 </div>
-            </aside>
+            </div>
+
+            {/* ── Reusable Dynamic Sidebar ── */}
+            <TravelerSidebar activePage="Settings" />
 
             {/* ── Main ── */}
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -128,47 +242,78 @@ export default function TravelerSettings() {
 
                         {/* Settings Content Pane */}
                         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-8 min-h-[600px]">
-                            {activeTab === "profile" && (
+                            {loading ? (
+                                <div className="h-full flex items-center justify-center opacity-50 font-bold animate-pulse">Loading Your Identity...</div>
+                            ) : activeTab === "profile" && (
                                 <div className="space-y-8 animate-in fade-in duration-300">
                                     <div className="flex items-center space-x-6">
                                         <div className="relative">
-                                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-3xl font-bold text-white shadow-md">
-                                                AL
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                ref={fileInputRef} 
+                                                onChange={handleImageUpload} 
+                                            />
+                                            <div className={`w-24 h-24 rounded-full ${!avatar ? "bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9]" : ""} flex items-center justify-center text-3xl font-bold text-white shadow-md relative overflow-hidden ring-4 ring-white`}>
+                                                {avatar ? <Image src={avatar} alt="Avatar" fill className="object-cover" /> : initials}
                                             </div>
-                                            <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full border border-slate-200 text-slate-600 hover:text-[#ff6b35] transition-colors shadow-sm">
+                                            <button 
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="absolute bottom-0 right-0 p-2 bg-white rounded-full border border-slate-200 text-slate-600 hover:text-[#ff6b35] transition-colors shadow-sm"
+                                            >
                                                 <Camera className="w-4 h-4" />
                                             </button>
                                         </div>
                                         <div>
                                             <h2 className="text-lg font-bold text-slate-900">Your Avatar</h2>
-                                            <p className="text-sm text-slate-400 mt-1">PNG, JPG up to 5MB. Verified users get a badge.</p>
+                                            <p className="text-sm text-slate-400 mt-1">PNG, JPG. Compress dynamically on browser. Verified users get a badge.</p>
                                         </div>
                                     </div>
                                     
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Full Name</label>
-                                            <input defaultValue="Alex Müller" className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" />
+                                            <input 
+                                                value={fullName} 
+                                                onChange={(e) => setFullName(e.target.value)}
+                                                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" 
+                                            />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Email Address</label>
-                                            <input defaultValue="traveler@gmail.com" type="email" className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" />
+                                            <input 
+                                                value={email} 
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                type="email" 
+                                                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" 
+                                            />
                                         </div>
                                         <div className="space-y-1.5 col-span-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Travel Bio</label>
-                                            <textarea rows={3} defaultValue="Adventure seeker, culture enthusiast, and mindful traveler." className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" />
+                                            <textarea 
+                                                rows={3} 
+                                                value={bio} 
+                                                onChange={(e) => setBio(e.target.value)}
+                                                placeholder="Tell artisants about your journey..."
+                                                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-[#ff6b35]/50 focus:ring-2 focus:ring-[#ff6b35]/10 transition-all font-semibold text-slate-800" 
+                                            />
                                         </div>
                                     </div>
                                     
                                     <div className="pt-4 border-t border-slate-100 flex justify-end">
-                                        <button className="px-6 py-2.5 rounded-xl bg-[#ff6b35] text-white text-sm font-bold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200">
-                                            Save Changes
+                                        <button 
+                                            onClick={handleSave}
+                                            disabled={saving}
+                                            className="px-6 py-2.5 rounded-xl bg-[#ff6b35] disabled:opacity-50 text-white text-sm font-bold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200"
+                                        >
+                                            {saving ? "Saving..." : "Save Changes"}
                                         </button>
                                     </div>
                                 </div>
                             )}
 
-                            {activeTab !== "profile" && (
+                            {!loading && activeTab !== "profile" && (
                                 <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-50 select-none animate-in fade-in duration-300">
                                     <LayoutDashboard className="w-12 h-12 text-slate-300" />
                                     <p className="text-slate-500 font-medium">This section is currently under construction.</p>

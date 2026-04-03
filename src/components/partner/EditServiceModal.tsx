@@ -1,34 +1,38 @@
-import { useState, useEffect } from "react";
-import { X, UploadCloud, MapPin, DollarSign, CheckCircle2 } from "lucide-react";
-
-interface Service {
-    id: number;
-    title: string;
-    price: string;
-    status: string;
-    [key: string]: any;
-}
+import { useState, useEffect, useRef } from "react";
+import { X, UploadCloud, MapPin, DollarSign, CheckCircle2, Loader2, Image as ImageIcon } from "lucide-react";
+import { Gig } from "@/types/gig";
+import { supabase } from "@/lib/supabaseClient";
+import Image from "next/image";
 
 interface EditServiceModalProps {
-    service: Service | null;
+    service: Gig | null;
     isOpen: boolean;
     onClose: () => void;
-    onSave: (updated: Service) => void;
+    onSave: (updated: Gig) => void;
+    onNotify: (message: string, type: any) => void;
 }
 
-export default function EditServiceModal({ service, isOpen, onClose, onSave }: EditServiceModalProps) {
+export default function EditServiceModal({ service, isOpen, onClose, onSave, onNotify }: EditServiceModalProps) {
     const [title, setTitle] = useState("");
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("Tour");
+    const [location, setLocation] = useState("");
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [saved, setSaved] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Prefill with current service values whenever modal opens
     useEffect(() => {
         if (service && isOpen) {
             setTitle(service.title);
-            // Strip "LKR " prefix if present
-            setPrice(service.price.replace(/^LKR\s?/, "").replace(",", ""));
+            // Strip "LKR " prefix and commas from price for editing
+            setPrice(service.price.replace(/^LKR\s?/, "").replace(/,/g, ""));
+            setCategory(service.category || "Tour");
+            setLocation(service.location || "");
+            setImagePreview(service.image);
+            setImageFile(null);
             setSaved(false);
             setIsSubmitting(false);
         }
@@ -36,29 +40,91 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
 
     if (!isOpen || !service) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const uploadImage = async (file: File) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data, error } = await supabase.storage
+            .from('Gig Images')
+            .upload(filePath, file);
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('Gig Images')
+            .getPublicUrl(filePath);
+
+        return publicUrl;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        setTimeout(() => {
+        try {
+            let currentImageUrl = service.image;
+
+            // 1. Upload new image if selected
+            if (imageFile) {
+                try {
+                    currentImageUrl = await uploadImage(imageFile);
+                } catch (err: any) {
+                    console.error("Storage upload error:", err);
+                    onNotify("Failed to upload image. Please ensure the 'Gig Images' bucket exists and is public.", "error");
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const formattedPrice = price
                 ? `LKR ${Number(price.replace(/,/g, "")).toLocaleString()}`
                 : service.price;
 
-            onSave({
-                ...service,
+            const updateData = {
                 title,
                 price: formattedPrice,
+                category,
+                location,
+                image: currentImageUrl
+            };
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/gigs/${service.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
             });
 
-            setIsSubmitting(false);
-            setSaved(true);
+            if (!res.ok) throw new Error("Failed to update gig");
 
+            onSave({
+                ...service,
+                ...updateData
+            });
+
+            setSaved(true);
             setTimeout(() => {
                 setSaved(false);
                 onClose();
             }, 1000);
-        }, 800);
+        } catch (err: any) {
+            console.error("Update error:", err);
+            onNotify(`Failed to update service: ${err.message}`, "error");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -82,12 +148,32 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-
-                    {/* Image placeholder */}
-                    <div className="w-full h-28 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 hover:border-emerald-300 hover:text-emerald-500 transition-colors cursor-pointer group">
-                        <UploadCloud className="w-7 h-7 mb-1.5 group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-semibold">Replace Cover Image</span>
-                        <span className="text-[10px] uppercase tracking-wider mt-0.5 opacity-70">1200 × 800px recommended</span>
+                    {/* Image Section */}
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-40 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 hover:border-emerald-300 hover:text-emerald-500 transition-colors cursor-pointer group relative overflow-hidden"
+                    >
+                        {imagePreview ? (
+                            <>
+                                <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                                    <UploadCloud className="w-8 h-8 mb-1" />
+                                    <span className="text-xs font-bold uppercase tracking-widest">Change Image</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Replace Cover Image</span>
+                            </>
+                        )}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            className="hidden" 
+                            accept="image/*" 
+                        />
                     </div>
 
                     <div className="space-y-4">
@@ -99,11 +185,28 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                             <input
                                 type="text"
                                 required
-                                placeholder="I will take you on a..."
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium placeholder:font-normal placeholder:text-slate-400"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium"
                             />
+                        </div>
+
+                        {/* Location */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
+                                Location (City / Area)
+                            </label>
+                            <div className="relative">
+                                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. Galle Face, Colombo"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium"
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -112,18 +215,15 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 ml-1">
                                     Category
                                 </label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <select
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium appearance-none bg-white"
-                                    >
-                                        <option value="Tour">City Tour</option>
-                                        <option value="Food">Food Experience</option>
-                                        <option value="Transport">Transport</option>
-                                    </select>
-                                </div>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium bg-white"
+                                >
+                                    <option value="Tour">City Tour</option>
+                                    <option value="Food">Food Experience</option>
+                                    <option value="Transport">Transport</option>
+                                </select>
                             </div>
 
                             {/* Price */}
@@ -136,7 +236,6 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. 5,000"
                                         value={price}
                                         onChange={(e) => setPrice(e.target.value)}
                                         className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-slate-800 font-medium"
@@ -162,7 +261,7 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                                 saved
                                     ? "bg-emerald-500 shadow-emerald-200"
                                     : isSubmitting
-                                    ? "bg-emerald-400 opacity-70 cursor-not-allowed shadow-emerald-200"
+                                    ? "bg-emerald-400 opacity-70 cursor-not-allowed"
                                     : "bg-emerald-500 hover:bg-emerald-600 hover:-translate-y-0.5 shadow-emerald-200"
                             }`}
                         >
@@ -173,10 +272,7 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave }: E
                                 </>
                             ) : isSubmitting ? (
                                 <>
-                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                    </svg>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
                                     Saving...
                                 </>
                             ) : (

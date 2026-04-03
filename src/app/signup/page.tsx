@@ -7,6 +7,7 @@ import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
 import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function SignUp() {
   const [role, setRole] = useState("Traveler");
@@ -17,8 +18,28 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
   const router = useRouter();
+
+  const handleGoogleAuth = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            // Pass the selected role so the DB trigger and callback can read it
+            access_type: 'offline',
+          },
+        },
+      });
+      // Store selected role in localStorage so callback page can update user metadata
+      localStorage.setItem('pending_google_role', role);
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Failed to authenticate with Google');
+    }
+  };
 
   const pwStrength = !password ? 0 : password.length < 6 ? 1 : password.length < 8 ? 2 : /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password) ? 4 : 3;
   const pwStrengthLabel = ["", "Weak", "Fair", "Good", "Strong"][pwStrength];
@@ -49,7 +70,7 @@ export default function SignUp() {
 
       {/* Success Toast */}
       <div
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${success ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"}`}
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${successMsg ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"}`}
       >
         <div className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-emerald-900/95 backdrop-blur-md text-white shadow-2xl shadow-emerald-900/40 border border-emerald-800">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
@@ -57,7 +78,7 @@ export default function SignUp() {
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </div>
-          <span className="text-sm font-semibold tracking-wide">Account created! Redirecting...</span>
+          <span className="text-sm font-semibold tracking-wide">{successMsg}</span>
         </div>
       </div>
 
@@ -160,7 +181,7 @@ export default function SignUp() {
               />
             </div>
 
-            <form className="space-y-4" noValidate onSubmit={(e) => {
+            <form className="space-y-4" noValidate onSubmit={async (e) => {
               e.preventDefault();
               setError("");
 
@@ -176,14 +197,38 @@ export default function SignUp() {
               if (cleanPassword.length < 8) { setError("Password must be at least 8 characters long."); return; }
               if (cleanPassword !== confirmPassword) { setError("Passwords do not match."); return; }
 
-              // Mock success registration
-              setSuccess(true);
+              const { data, error } = await supabase.auth.signUp({
+                email: cleanEmail,
+                password: cleanPassword,
+                options: {
+                  data: {
+                    full_name: cleanName,
+                    role: role
+                  }
+                }
+              });
+
+              if (error) {
+                setError(error.message);
+                return;
+              }
+
+              if (data.user && data.user.identities && data.user.identities.length === 0) {
+                 setError("User already registered. Please sign in.");
+                 return;
+              }
+
+              if (!data.session) {
+                 setSuccessMsg("Success! Please check your email to verify your account.");
+                 return;
+              }
+
+              setSuccessMsg("Account created! Redirecting...");
               setTimeout(() => {
                   document.cookie = "auth=true; path=/";
                   if (role === "Partner") router.push("/partnerdashboard");
                   else router.push("/dashboard");
               }, 1500);
-
             }}>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
@@ -292,6 +337,7 @@ export default function SignUp() {
             <div className="mt-6 grid grid-cols-2 gap-4">
               <button
                 type="button"
+                onClick={handleGoogleAuth}
                 className="flex items-center justify-center space-x-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
