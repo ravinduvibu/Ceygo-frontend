@@ -12,11 +12,14 @@ import {
     CalendarCheck2,
     TrendingUp,
     TrendingDown,
-    XCircle
+    XCircle,
+    ChevronDown,
+    Check
 } from "lucide-react";
 import Image from "next/image";
+import OrderDetailsModal from "./OrderDetailsModal";
 
-const mockOrders = [
+const initialOrders = [
     {
         id: "ORD-94281",
         gigTitle: "Sunset TukTuk City Tour",
@@ -74,19 +77,68 @@ const mockOrders = [
     }
 ];
 
-export default function ActiveOrders() {
-    const [filter, setFilter] = useState("All");
+interface ActiveOrdersProps {
+    onNavigateToInbox?: () => void;
+}
 
-    const filteredOrders = mockOrders.filter(order => {
-        if (filter === "All") return true;
-        if (filter === "Active") return ["In Progress", "Priority", "Pending"].includes(order.status);
-        if (filter === "Completed") return order.status === "Completed";
-        if (filter === "Cancelled") return order.status === "Cancelled";
-        return true;
+export default function ActiveOrders({ onNavigateToInbox }: ActiveOrdersProps) {
+    const [filter, setFilter] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [gigFilter, setGigFilter] = useState("All Gigs");
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [orders, setOrders] = useState(initialOrders);
+    const [selectedOrder, setSelectedOrder] = useState<typeof initialOrders[0] | null>(null);
+
+    // Extract unique gigs for the dropdown filter
+    const uniqueGigs = ["All Gigs", ...Array.from(new Set(initialOrders.map(o => o.gigTitle)))];
+
+    const filteredOrders = orders.filter(order => {
+        // Tab filter
+        let matchesFilter = true;
+        if (filter === "Active") matchesFilter = ["In Progress", "Priority", "Pending"].includes(order.status);
+        else if (filter === "Completed") matchesFilter = order.status === "Completed";
+        else if (filter === "Cancelled") matchesFilter = order.status === "Cancelled";
+
+        // Search query filter
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = 
+            order.id.toLowerCase().includes(q) ||
+            order.gigTitle.toLowerCase().includes(q) ||
+            order.buyer.name.toLowerCase().includes(q) ||
+            order.buyer.location.toLowerCase().includes(q);
+
+        const matchesGig = gigFilter === "All Gigs" || order.gigTitle === gigFilter;
+
+        return matchesFilter && matchesSearch && matchesGig;
     });
+
+    const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+        setOrders(prev => prev.map(o => {
+            if (o.id === orderId) {
+                // Determine new color based on status
+                let color = "slate";
+                if (newStatus === "Completed") color = "emerald";
+                else if (newStatus === "Cancelled") color = "red";
+                else if (newStatus === "In Progress") color = "blue";
+                else if (newStatus === "Pending") color = "amber";
+                else if (newStatus === "Priority") color = "purple";
+                
+                return { ...o, status: newStatus, color };
+            }
+            return o;
+        }));
+    };
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <OrderDetailsModal 
+                isOpen={!!selectedOrder} 
+                order={selectedOrder} 
+                onClose={() => setSelectedOrder(null)} 
+                onUpdateStatus={(newStatus) => selectedOrder && handleUpdateOrderStatus(selectedOrder.id, newStatus)}
+                onNavigateToInbox={onNavigateToInbox}
+            />
+
             {/* Header section */}
             <div className="flex items-center justify-between">
                 <div>
@@ -98,15 +150,50 @@ export default function ActiveOrders() {
                         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input 
                             type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search orders..." 
                             className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all w-64 shadow-sm"
                         />
                     </div>
-                    <button className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-bold shadow-sm transition-colors">
-                        <Filter className="w-4 h-4" />
-                        <span>Filter</span>
-                    </button>
-                </div>
+                        <button 
+                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            className={`flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-bold shadow-sm transition-colors ${isFilterOpen ? 'ring-2 ring-emerald-500/20 border-emerald-500' : ''}`}
+                        >
+                            <Filter className="w-4 h-4" />
+                            <span>{gigFilter === "All Gigs" ? "Filter" : "Filtered"}</span>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                        </button>
+                        
+                        {/* Dropdown Menu */}
+                        {isFilterOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 py-2 border-b border-slate-100">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Filter by Gig</p>
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto">
+                                        {uniqueGigs.map(gig => (
+                                            <button
+                                                key={gig}
+                                                onClick={() => {
+                                                    setGigFilter(gig);
+                                                    setIsFilterOpen(false);
+                                                }}
+                                                className="w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-slate-50 flex items-center justify-between transition-colors group"
+                                            >
+                                                <span className={`truncate ${gigFilter === gig ? "text-emerald-600" : "text-slate-700"}`}>
+                                                    {gig}
+                                                </span>
+                                                {gigFilter === gig && <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 ml-2" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
             </div>
 
             {/* Top KPI Cards for Orders */}
@@ -155,9 +242,9 @@ export default function ActiveOrders() {
                             <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                                 filter === tab ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
                             }`}>
-                                {tab === "All" ? mockOrders.length : 
-                                 tab === "Active" ? mockOrders.filter(o => ["In Progress", "Priority", "Pending"].includes(o.status)).length :
-                                 mockOrders.filter((s) => s.status === tab).length}
+                                {tab === "All" ? orders.length : 
+                                 tab === "Active" ? orders.filter(o => ["In Progress", "Priority", "Pending"].includes(o.status)).length :
+                                 orders.filter((s) => s.status === tab).length}
                             </span>
                             {filter === tab && (
                                 <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-500 rounded-t-full" />
@@ -184,10 +271,10 @@ export default function ActiveOrders() {
                                 <tr>
                                     <td colSpan={6} className="py-16 text-center">
                                         <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <CalendarCheck2 className="w-6 h-6 text-slate-300" />
+                                            <Search className="w-5 h-5 text-slate-300" />
                                         </div>
                                         <p className="text-sm font-bold text-slate-900">No orders found</p>
-                                        <p className="text-xs text-slate-500 mt-1">There are no orders matching the '{filter}' filter.</p>
+                                        <p className="text-xs text-slate-500 mt-1">Try adjusting your search or filter criteria.</p>
                                     </td>
                                 </tr>
                             ) : (
@@ -202,7 +289,10 @@ export default function ActiveOrders() {
                                                 <div>
                                                     <p className="text-sm font-bold text-slate-900 hover:text-emerald-600 cursor-pointer">{order.buyer.name}</p>
                                                     <p className="text-xs font-medium text-slate-500">{order.buyer.location}</p>
-                                                    <button className="flex items-center space-x-1 text-[10px] font-bold text-slate-400 hover:text-slate-700 mt-1 transition-colors">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); onNavigateToInbox?.(); }}
+                                                        className="flex items-center space-x-1 text-[10px] font-bold text-slate-400 hover:text-slate-700 mt-1 transition-colors"
+                                                    >
                                                         <MessageSquare className="w-3 h-3" />
                                                         <span>Message</span>
                                                     </button>
@@ -253,13 +343,19 @@ export default function ActiveOrders() {
                                         {/* Actions */}
                                         <td className="py-4 px-6 align-top text-right">
                                             <div className="flex items-center justify-end space-x-2">
-                                                {order.status === "In Progress" || order.status === "Priority" ? (
-                                                    <button className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-emerald-200 transition-all flex items-center space-x-1.5">
-                                                        <UploadCloud className="w-3.5 h-3.5" />
-                                                        <span>Confirm Order</span>
+                                                {order.status === "Pending" ? (
+                                                    <button 
+                                                        onClick={() => setSelectedOrder(order)}
+                                                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-emerald-200 transition-all flex items-center space-x-1.5"
+                                                    >
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        <span>Accept Order</span>
                                                     </button>
                                                 ) : (
-                                                    <button className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-all">
+                                                    <button 
+                                                        onClick={() => setSelectedOrder(order)}
+                                                        className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                    >
                                                         View Order
                                                     </button>
                                                 )}

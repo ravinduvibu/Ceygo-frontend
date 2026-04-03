@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
     Briefcase,
@@ -62,10 +63,33 @@ function StarRating({ rating }: { rating: number }) {
     );
 }
 
-export default function PartnerDashboard() {
-    const [activeTab, setActiveTab] = useState("Dashboard");
+function DashboardContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    
+    // Initialize tab from URL or fallback to "Dashboard"
+    const tabParam = searchParams.get("tab");
+    const [activeTab, setActiveTab] = useState(tabParam || "Dashboard");
     const [dashboardServices, setDashboardServices] = useState(initialDashboardServices);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    // Sync tab param if missing on mount
+    useEffect(() => {
+        // Immediate client-side auth check to prevent bfcache bypassing middleware
+        if (!document.cookie.includes('auth=')) {
+            window.location.replace('/');
+            return;
+        }
+
+        if (!tabParam && activeTab === "Dashboard") {
+            router.replace(`?tab=Dashboard`, { scroll: false });
+        }
+    }, [tabParam, activeTab, router]);
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        router.push(`?tab=${encodeURIComponent(tab)}`, { scroll: false });
+    };
 
     const handleAddDashboardService = (newSvc: any) => {
         // Map the modal service to dashboard service format
@@ -115,7 +139,7 @@ export default function PartnerDashboard() {
                         return (
                         <button
                             key={label}
-                            onClick={() => setActiveTab(label)}
+                            onClick={() => handleTabChange(label)}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
                                     ? "bg-slate-800 text-white shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
@@ -144,14 +168,16 @@ export default function PartnerDashboard() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Nuwan Perera</p>
                             <p className="text-xs text-slate-400 truncate">TukTuk Partner</p>
                         </div>
-                        <Link 
-                            href="/" 
-                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        <button 
+                            onClick={() => { 
+                                document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
+                                window.location.replace("/"); 
+                            }}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                             title="Log out"
                         >
                             <LogOut className="w-4 h-4" />
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -193,7 +219,7 @@ export default function PartnerDashboard() {
                         {activeTab === "My Services (Gigs)" ? (
                             <MyServices />
                         ) : activeTab === "Active Orders" ? (
-                            <ActiveOrders />
+                            <ActiveOrders onNavigateToInbox={() => handleTabChange("Inbox")} />
                         ) : activeTab === "Inbox" ? (
                             <Inbox />
                         ) : activeTab === "Earnings" ? (
@@ -211,7 +237,12 @@ export default function PartnerDashboard() {
                                             <span>Active Bookings</span>
                                             <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">3</span>
                                         </h2>
-                                        <button className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">View All Orders</button>
+                                        <button 
+                                            onClick={() => handleTabChange("Active Orders")}
+                                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                                        >
+                                            View All Orders
+                                        </button>
                                     </div>
                                     <div className="p-0">
                                         <table className="w-full text-left border-collapse">
@@ -268,14 +299,16 @@ export default function PartnerDashboard() {
                                     <div className="grid grid-cols-3 gap-4">
                                         {dashboardServices.map((svc) => (
                                             <div key={svc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group">
-                                                <div className="h-32 bg-slate-100 flex items-center justify-center text-5xl border-b border-slate-100 group-hover:bg-emerald-50 transition-colors cursor-pointer relative">
+                                                <Link href="/gig" className="h-32 bg-slate-100 flex items-center justify-center text-5xl border-b border-slate-100 group-hover:bg-emerald-50 transition-colors cursor-pointer relative block">
                                                     {svc.image}
                                                     <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                         <span className="text-white text-xs font-bold bg-slate-900/60 px-3 py-1.5 rounded-full backdrop-blur-sm">View Gig</span>
                                                     </div>
-                                                </div>
+                                                </Link>
                                                 <div className="p-4 flex flex-col flex-1">
-                                                    <h3 className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 cursor-pointer hover:text-emerald-600 transition-colors">{svc.title}</h3>
+                                                    <Link href="/gig" className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 cursor-pointer hover:text-emerald-600 transition-colors">
+                                                        {svc.title}
+                                                    </Link>
                                                     <div className="flex items-center justify-between mt-auto pt-4">
                                                         <div className="flex items-center space-x-1">
                                                             <Star className="w-3.5 h-3.5 fill-[#f59e0b] stroke-[#f59e0b]" />
@@ -287,7 +320,33 @@ export default function PartnerDashboard() {
                                                 </div>
                                                 <div className="bg-slate-50 border-t border-slate-100 px-4 py-2.5 flex items-center justify-between">
                                                     <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Active Bookings: <span className="text-slate-800">{svc.activeOrders}</span></span>
-                                                    <button className="text-slate-400 hover:text-slate-700"><MoreHorizontal className="w-4 h-4" /></button>
+                                                    <div className="relative group/menu">
+                                                        <button className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-200 transition-colors">
+                                                            <MoreHorizontal className="w-4 h-4" />
+                                                        </button>
+                                                        {/* Dropdown Menu */}
+                                                        <div className="absolute right-0 bottom-full mb-1 w-36 bg-white border border-slate-100 shadow-lg rounded-xl overflow-hidden opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all origin-bottom-right z-10">
+                                                            <Link href="/gig" className="block px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors text-left w-full">
+                                                                View Gig
+                                                            </Link>
+                                                            <button 
+                                                                onClick={() => handleTabChange("My Services (Gigs)")}
+                                                                className="block px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors text-left w-full"
+                                                            >
+                                                                Manage
+                                                            </button>
+                                                            <div className="border-t border-slate-100 my-1"></div>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText("http://localhost:3000/gig");
+                                                                    alert("Gig link copied to clipboard!");
+                                                                }}
+                                                                className="block px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left w-full"
+                                                            >
+                                                                Share Link
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -304,9 +363,12 @@ export default function PartnerDashboard() {
                                             <span>Inbox</span>
                                             <span className="text-xs font-bold bg-[#ff6b35] text-white px-1.5 py-0.5 rounded-full">2</span>
                                         </h2>
-                                        <Link href="#" className="p-1 text-slate-400 hover:text-emerald-600 transition-colors">
+                                        <button 
+                                            onClick={() => handleTabChange("Inbox")}
+                                            className="p-1 text-slate-400 hover:text-emerald-600 transition-colors"
+                                        >
                                             <MoreHorizontal className="w-5 h-5" />
-                                        </Link>
+                                        </button>
                                     </div>
                                     
                                     <div className="flex-1 overflow-y-auto w-full">
@@ -334,7 +396,7 @@ export default function PartnerDashboard() {
                                     
                                     <div className="p-4 border-t border-slate-100 bg-slate-50">
                                         <button 
-                                            onClick={() => setActiveTab("Inbox")}
+                                            onClick={() => handleTabChange("Inbox")}
                                             className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition-all shadow-sm"
                                         >
                                             View All Conversations
@@ -354,5 +416,13 @@ export default function PartnerDashboard() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function PartnerDashboard() {
+    return (
+        <Suspense fallback={<div className="h-screen bg-slate-50 flex items-center justify-center text-slate-400">Loading...</div>}>
+            <DashboardContent />
+        </Suspense>
     );
 }

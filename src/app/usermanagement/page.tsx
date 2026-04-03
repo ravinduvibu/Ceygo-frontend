@@ -40,7 +40,7 @@ import Link from "next/link";
 type Role = "Admin" | "Seller" | "Tourist";
 
 interface User {
-    id: number;
+    id: string; // Changed to string for UUID
     name: string;
     email: string;
     phone: string;
@@ -51,16 +51,7 @@ interface User {
 }
 
 // ── Mock Data ─────────────────────────────────────────────
-const initialUsers: User[] = [
-    { id: 1, name: "Samantha Clarke", email: "s.clarke@email.com", phone: "+1 604 555 0182", joined: "Jan 12, 2026", role: "Admin", status: "Active", avatar: "SC" },
-    { id: 2, name: "Nuwan Perera", email: "nuwan.p@ceygo.lk", phone: "+94 77 234 5678", joined: "Feb 3, 2026", role: "Seller", status: "Active", avatar: "NP" },
-    { id: 3, name: "Lisa Müller", email: "l.muller@gmail.com", phone: "+49 151 2233 4455", joined: "Jan 28, 2026", role: "Tourist", status: "Active", avatar: "LM" },
-    { id: 4, name: "Arjuna Bandara", email: "arjuna.b@lk.net", phone: "+94 71 456 7890", joined: "Feb 14, 2026", role: "Seller", status: "Active", avatar: "AB" },
-    { id: 5, name: "Hiroshi Tanaka", email: "h.tanaka@jp.co", phone: "+81 90 1234 5678", joined: "Mar 1, 2026", role: "Tourist", status: "Active", avatar: "HT" },
-    { id: 6, name: "Priya Krishnan", email: "priya.k@in.dev", phone: "+91 98765 43210", joined: "Feb 22, 2026", role: "Tourist", status: "Suspended", avatar: "PK" },
-    { id: 7, name: "Ravi De Silva", email: "ravi.ds@ceygo.lk", phone: "+94 76 789 0123", joined: "Jan 5, 2026", role: "Admin", status: "Active", avatar: "RD" },
-    { id: 8, name: "Emma Thompson", email: "emma.t@uk.io", phone: "+44 7700 900123", joined: "Mar 4, 2026", role: "Tourist", status: "Active", avatar: "ET" },
-];
+const initialUsers: User[] = [];
 
 // ── Permission definitions ────────────────────────────────
 const permissionGroups = [
@@ -166,7 +157,7 @@ export default function UserManagement() {
     const [saved, setSaved] = useState(false);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newUserForm, setNewUserForm] = useState({ name: "", email: "", role: "Seller" as Role });
+    const [newUserForm, setNewUserForm] = useState({ name: "", email: "", password: "", role: "Seller" as Role });
 
     // Notifications
     const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
@@ -187,24 +178,113 @@ export default function UserManagement() {
     const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const [loading, setLoading] = useState(true);
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch("http://localhost:5000/api/users");
+            const result = await response.json();
+            if (result.data) {
+                const mappedUsers: User[] = result.data.map((u: any) => ({
+                    id: u.id,
+                    name: u.full_name || "Unknown User",
+                    email: u.email,
+                    phone: u.phone || "+94 --- --- ----",
+                    joined: new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    role: u.role === "Partner" ? "Seller" : u.role === "Traveler" ? "Tourist" : u.role || "Tourist",
+                    status: u.status || "Active",
+                    avatar: (u.full_name || "??").split(" ").map((n: any) => n[0]).join("").substring(0, 2).toUpperCase()
+                }));
+                setUsers(mappedUsers);
+            }
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
+        try {
+            // Map frontend role back to backend role if necessary
+            const backendUpdates: any = { ...updates };
+            if (updates.role === "Seller") backendUpdates.role = "Partner";
+            if (updates.role === "Tourist") backendUpdates.role = "Traveler";
+
+            const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(backendUpdates),
+            });
+
+            if (response.ok) {
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+                fetchUsers(); // Refresh list
+            }
+        } catch (error) {
+            console.error("Error updating user:", error);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string) => {
+        if (!confirm("Are you sure you want to revoke access for this user? This action cannot be undone.")) return;
+        
+        try {
+            // Note: Since we don't have a specific DELETE /api/users/:id yet, 
+            // I should add it to the backend or use the generic one if available.
+            // But for now, let's assume we use DELETE /api/users/:id
+            const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                method: "DELETE",
+            });
+
+            if (response.ok) {
+                setSelectedUser(null);
+                fetchUsers();
+            }
+        } catch (error) {
+            console.error("Error deleting user:", error);
+        }
+    };
+
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newUserForm.name || !newUserForm.email) return;
+        
+        try {
+            // Map frontend role to backend role
+            let backendRole = newUserForm.role;
+            if (newUserForm.role === "Seller") backendRole = "Partner" as Role;
+            if (newUserForm.role === "Tourist") backendRole = "Traveler" as Role;
 
-        const newUser: User = {
-            id: Math.floor(Math.random() * 1000) + 10,
-            name: newUserForm.name,
-            email: newUserForm.email,
-            phone: "+94 77 000 0000",
-            joined: "Just now",
-            role: newUserForm.role,
-            status: "Active",
-            avatar: newUserForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
-        };
+            const response = await fetch("http://localhost:5000/api/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    full_name: newUserForm.name,
+                    email: newUserForm.email,
+                    password: newUserForm.password,
+                    role: backendRole,
+                    status: "Active"
+                }),
+            });
 
-        setUsers([newUser, ...users]);
-        setNewUserForm({ name: "", email: "", role: "Seller" as Role });
-        setIsAddModalOpen(false);
+            if (response.ok) {
+                setIsAddModalOpen(false);
+                setNewUserForm({ name: "", email: "", password: "", role: "Seller" as Role }); // Clear form
+                fetchUsers(); // Refresh list
+            } else {
+                const errorData = await response.json();
+                alert(`Error adding user: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error("Error adding user:", error);
+            alert("An error occurred while adding the user.");
+        }
     };
 
     const filtered = users.filter((u) => {
@@ -565,14 +645,14 @@ export default function UserManagement() {
                                                         <button
                                                             disabled={hardLocked}
                                                             onClick={() => !hardLocked && togglePerm(key)}
-                                                            className={`relative w-9 h-5 rounded-full transition-all duration-200 flex-shrink-0 ml-2 ${hardLocked
+                                                            className={`relative w-9 h-5 rounded-full transition-all duration-200 flex-shrink-0 ml-2 outline-none ${hardLocked
                                                                     ? "bg-slate-200 cursor-not-allowed"
                                                                     : isOn
                                                                         ? "bg-emerald-500 hover:bg-emerald-600 cursor-pointer"
                                                                         : "bg-slate-200 hover:bg-slate-300 cursor-pointer"
                                                                 }`}
                                                         >
-                                                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isOn ? "translate-x-4" : "translate-x-0.5"
+                                                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isOn ? "translate-x-4" : "translate-x-0"
                                                                 }`} />
                                                         </button>
                                                     </div>
@@ -592,18 +672,28 @@ export default function UserManagement() {
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => setSaved(true)}
+                                        onClick={() => handleUpdateUser(selectedUser.id, { role: editRole })}
                                         className="w-full py-2.5 rounded-xl bg-[#ff6b35] text-white text-sm font-bold hover:bg-[#e55a2b] transition-colors shadow-sm shadow-orange-200 flex items-center justify-center space-x-2"
                                     >
                                         <Save className="w-4 h-4" />
                                         <span>Save Role</span>
                                     </button>
                                 )}
-                                <button className="w-full py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200 hover:bg-amber-100 transition-colors flex items-center justify-center space-x-2">
+                                <button 
+                                    onClick={() => handleUpdateUser(selectedUser.id, { status: selectedUser.status === "Active" ? "Suspended" : "Active" })}
+                                    className={`w-full py-2 rounded-xl text-xs font-semibold border transition-colors flex items-center justify-center space-x-2 ${
+                                        selectedUser.status === "Active" 
+                                            ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" 
+                                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                    }`}
+                                >
                                     <PauseCircle className="w-3.5 h-3.5" />
-                                    <span>Suspend Account</span>
+                                    <span>{selectedUser.status === "Active" ? "Suspend Account" : "Activate Account"}</span>
                                 </button>
-                                <button className="w-full py-2 rounded-xl bg-slate-50 text-red-500 text-xs font-semibold border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-colors flex items-center justify-center space-x-2">
+                                <button 
+                                    onClick={() => handleDeleteUser(selectedUser.id)}
+                                    className="w-full py-2 rounded-xl bg-slate-50 text-red-500 text-xs font-semibold border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-colors flex items-center justify-center space-x-2"
+                                >
                                     <Trash2 className="w-3.5 h-3.5" />
                                     <span>Revoke Access</span>
                                 </button>
@@ -656,6 +746,22 @@ export default function UserManagement() {
                                         placeholder="e.g. maya@ceygo.lk"
                                         value={newUserForm.email}
                                         onChange={(e: any) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Initial Password</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Lock className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <input
+                                        required
+                                        type="password"
+                                        placeholder="Min 6 characters"
+                                        value={newUserForm.password}
+                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                                         className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
                                     />
                                 </div>

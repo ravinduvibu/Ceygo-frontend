@@ -1,18 +1,46 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function Home() {
+function SignInContent() {
   const [role, setRole] = useState("Traveler");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Show error toast if redirected back from /auth/callback with ?error=...
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+      // Clean the URL so the error doesn't persist on refresh
+      window.history.replaceState({}, '', '/signin');
+    }
+  }, [searchParams]);
+
+  const handleGoogleAuth = async () => {
+    try {
+      // Save which role the user selected so callback can enforce it
+      localStorage.setItem('pending_signin_role', role);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Failed to authenticate with Google');
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -135,7 +163,7 @@ export default function Home() {
               />
             </div>
 
-            <form className="space-y-5" noValidate onSubmit={(e) => {
+            <form className="space-y-5" noValidate onSubmit={async (e) => {
               e.preventDefault();
               setError("");
 
@@ -163,26 +191,35 @@ export default function Home() {
                 return;
               }
 
-              if (cleanEmail.toLowerCase() === "admin@gmail.com" && cleanPassword === "admin") {
-                document.cookie = "auth=true; path=/";
-                router.push("/admin");
-              } else if (cleanEmail.toLowerCase() === "partner@gmail.com" && cleanPassword === "partner") {
-                if (role !== "Partner") {
-                  setError("Role mismatch! Please select 'Partner' to log into a seller account.");
-                  return;
-                }
-                document.cookie = "auth=true; path=/";
-                router.push("/partnerdashboard");
-              } else if (cleanEmail.toLowerCase() === "traveler@gmail.com" && cleanPassword === "traveler") {
-                if (role !== "Traveler") {
-                  setError("Role mismatch! Please select 'Traveler' to log into a tourist account.");
-                  return;
-                }
-                document.cookie = "auth=true; path=/";
-                router.push("/dashboard");
-              } else {
-                setError("Invalid credentials. Please use correct email and password");
+              const { data, error } = await supabase.auth.signInWithPassword({
+                email: cleanEmail,
+                password: cleanPassword,
+              });
+
+              if (error) {
+                setError(error.message || "Invalid credentials. Please use correct email and password.");
+                return;
               }
+
+              // Check user's role stored in Supabase auth metadata (set at signup)
+              const userRole = data.user?.user_metadata?.role || "Traveler";
+
+              // Admin bypasses the toggle — redirect directly to admin panel
+              if (userRole === "Admin") {
+                  document.cookie = "auth=true; path=/";
+                  router.push("/admin");
+                  return;
+              }
+
+              // Traveler/Partner MUST match the selected toggle — strict enforcement
+              if (userRole !== role) {
+                  setError(`This account is registered as a ${userRole}. Please select the correct role to sign in.`);
+                  return;
+              }
+
+              // Redirect to the correct dashboard based on stored role
+              document.cookie = "auth=true; path=/";
+              router.push(userRole === "Partner" ? "/partnerdashboard" : "/dashboard");
             }}>
               <Input
                 label="Email"
@@ -201,9 +238,9 @@ export default function Home() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <div className="flex justify-end pt-1">
-                  <a href="#" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
+                  <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
               </div>
 
@@ -226,6 +263,7 @@ export default function Home() {
             <div className="mt-8 grid grid-cols-2 gap-4">
               <button
                 type="button"
+                onClick={handleGoogleAuth}
                 className="flex items-center justify-center space-x-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -271,4 +309,16 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+export default function SignInPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+                <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#ff6b35] animate-spin" />
+            </div>
+        }>
+            <SignInContent />
+        </Suspense>
+    );
 }

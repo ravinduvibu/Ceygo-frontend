@@ -5,7 +5,6 @@ import {
     ArrowDownRight, 
     Clock, 
     CheckCircle2, 
-    CreditCard, 
     Landmark,
     DownloadCloud,
     Filter
@@ -40,8 +39,18 @@ const transactions = [
     { id: "TXN-94601", date: "Mar 05, 2026", type: "Withdrawal", desc: "Bank Transfer to ****4592", amount: "-LKR 18,500", status: "Completed", statusColor: "slate" },
 ];
 
+type WithdrawState = "idle" | "loading" | "success";
+
 export default function Earnings() {
     const [filter, setFilter] = useState("All");
+    const [withdrawState, setWithdrawState] = useState<WithdrawState>("idle");
+
+    const handleWithdraw = async () => {
+        if (withdrawState !== "idle") return;
+        setWithdrawState("loading");
+        await new Promise((r) => setTimeout(r, 2600));
+        setWithdrawState("success");
+    };
 
     const filteredTransactions = transactions.filter(txn => {
         if (filter === "All") return true;
@@ -107,49 +116,163 @@ export default function Earnings() {
             <div className="grid grid-cols-3 gap-6">
                 
                 {/* Withdraw Component */}
-                <div className="col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
-                    <h3 className="text-base font-bold text-slate-900 mb-1">Withdraw Balance</h3>
-                    <p className="text-xs text-slate-500 mb-6">Transfer your available funds to your preferred payment method.</p>
-                    
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Available Balance</p>
-                        <p className="text-4xl font-black text-emerald-600">LKR 52,100</p>
-                    </div>
+                <div className="col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden">
 
-                    <div className="space-y-3 mb-6 flex-1">
-                        <label className="flex items-center justify-between p-3 border border-emerald-500 bg-emerald-50 rounded-xl cursor-pointer">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                    <Landmark className="w-4 h-4" />
+                    {/* ── SUCCESS STATE ── */}
+                    {withdrawState === "success" ? (
+                        <div className="flex flex-col items-center justify-center flex-1 text-center space-y-5 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* Animated circle check */}
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-20 h-20 rounded-full bg-emerald-50 border-4 border-emerald-100 flex items-center justify-center">
+                                    <svg className="w-9 h-9 text-emerald-500" viewBox="0 0 52 52" fill="none">
+                                        <circle cx="26" cy="26" r="24" stroke="#10b981" strokeWidth="3" fill="none"
+                                            strokeDasharray="151" strokeDashoffset="0"
+                                            style={{ animation: "dash 0.6s ease-out forwards" }}
+                                        />
+                                        <polyline points="14,26 22,34 38,18" stroke="#10b981" strokeWidth="3.5"
+                                            strokeLinecap="round" strokeLinejoin="round" fill="none"
+                                            strokeDasharray="40" strokeDashoffset="0"
+                                            style={{ animation: "dash 0.4s 0.5s ease-out forwards" }}
+                                        />
+                                    </svg>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900">Bank Transfer</p>
-                                    <p className="text-xs text-slate-500">**** **** 4592 (Commercial Bank)</p>
+                                {/* Pulse ring */}
+                                <div className="absolute w-20 h-20 rounded-full border-2 border-emerald-400 opacity-0"
+                                    style={{ animation: "ping 1s 0.4s ease-out 2" }}
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-base font-black text-slate-900">Request Sent!</p>
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                    Your withdrawal of{" "}
+                                    <span className="font-bold text-slate-700">LKR 52,100</span>{" "}
+                                    is being processed.
+                                </p>
+                            </div>
+
+                            {/* Bank details pill */}
+                            <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-left">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                        <Landmark className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-800">Commercial Bank</p>
+                                        <p className="text-[10px] text-slate-400">**** **** **** 4592</p>
+                                    </div>
+                                    <div className="ml-auto">
+                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Selected</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="w-5 h-5 rounded-full border-4 border-emerald-500 bg-white" />
-                        </label>
-                        
-                        <label className="flex items-center justify-between p-3 border border-slate-200 hover:border-slate-300 bg-white rounded-xl cursor-pointer transition-colors">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-                                    <CreditCard className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900">PayPal</p>
-                                    <p className="text-xs text-slate-500">n.perera@example.com</p>
-                                </div>
-                            </div>
-                            <div className="w-5 h-5 rounded-full border-2 border-slate-200 bg-white" />
-                        </label>
-                    </div>
 
-                    <button className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold rounded-xl transition-all shadow-md mt-auto">
-                        Withdraw LKR 52,100
-                    </button>
-                    <p className="text-center text-[10px] font-medium text-slate-400 mt-3">
-                        Funds will arrive in 2-3 business days.
-                    </p>
+                            {/* Timeline */}
+                            <div className="w-full space-y-2">
+                                {[
+                                    { label: "Request received", time: "Just now", done: true },
+                                    { label: "Bank processing", time: "1–2 business days", done: false },
+                                    { label: "Funds arrive", time: "Within 4 business days", done: false },
+                                ].map((step, i) => (
+                                    <div key={i} className="flex items-center space-x-3">
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                                            step.done ? "bg-emerald-500" : "bg-slate-100 border-2 border-slate-200"
+                                        }`}>
+                                            {step.done && (
+                                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 flex items-center justify-between">
+                                            <p className={`text-xs font-semibold ${ step.done ? "text-slate-700" : "text-slate-400"}`}>{step.label}</p>
+                                            <p className="text-[10px] text-slate-400 font-medium">{step.time}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p className="text-[10px] text-slate-400 leading-relaxed">
+                                You&apos;ll receive an email confirmation shortly. Estimated arrival within{" "}
+                                <span className="font-bold text-slate-600">4 business days</span>.
+                            </p>
+                        </div>
+                    ) : (
+                    /* ── DEFAULT / LOADING STATE ── */
+                    <>
+                        <h3 className="text-base font-bold text-slate-900 mb-1">Withdraw Balance</h3>
+                        <p className="text-xs text-slate-500 mb-6">Transfer your available funds via bank transfer.</p>
+
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Available Balance</p>
+                            <p className="text-4xl font-black text-emerald-600">LKR 52,100</p>
+                        </div>
+
+                        {/* Bank Transfer — only option */}
+                        <div className="mb-6 flex-1">
+                            <div className="flex items-center justify-between p-3 border border-emerald-500 bg-emerald-50 rounded-xl">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                        <Landmark className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">Bank Transfer</p>
+                                        <p className="text-xs text-slate-500">**** **** 4592 (Commercial Bank)</p>
+                                    </div>
+                                </div>
+                                <div className="w-5 h-5 rounded-full border-4 border-emerald-500 bg-white" />
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium mt-2 ml-1">
+                                Funds will arrive within 4 business days.
+                            </p>
+                        </div>
+
+                        {/* Withdraw button — Stripe-style loading */}
+                        <button
+                            onClick={handleWithdraw}
+                            disabled={withdrawState === "loading"}
+                            className="relative w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold rounded-xl transition-all shadow-md mt-auto overflow-hidden disabled:cursor-not-allowed"
+                        >
+                            {/* Stripe shimmer bar */}
+                            {withdrawState === "loading" && (
+                                <span
+                                    className="absolute inset-0 -translate-x-full"
+                                    style={{
+                                        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+                                        animation: "shimmer 1.2s infinite",
+                                    }}
+                                />
+                            )}
+
+                            {withdrawState === "loading" ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : (
+                                "Withdraw LKR 52,100"
+                            )}
+                        </button>
+                    </>
+                    )}
+
+                    <style>{`
+                        @keyframes shimmer {
+                            0%   { transform: translateX(-100%); }
+                            100% { transform: translateX(200%); }
+                        }
+                        @keyframes dash {
+                            from { stroke-dashoffset: 151; }
+                            to   { stroke-dashoffset: 0; }
+                        }
+                        @keyframes ping {
+                            0%   { transform: scale(1);   opacity: 0.6; }
+                            100% { transform: scale(1.5); opacity: 0; }
+                        }
+                    `}</style>
                 </div>
 
                 {/* Earnings Chart */}

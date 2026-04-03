@@ -22,6 +22,23 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
+
+export interface WishlistItem {
+    id: string; // the wishlist row ID
+    serviceId: string;
+    title: string;
+    vendor: string;
+    vendorImg: string;
+    image: string;
+    rating: number;
+    reviews: number;
+    price: string;
+    level: string;
+    location: string;
+    category: string;
+    savedDate: string;
+}
 
 const CLEARED_KEY = "ceygo_nav_cleared";
 function getClearedLabels(): string[] {
@@ -47,106 +64,90 @@ const navItems = [
     { icon: Settings,        label: "Settings",             active: false, count: 0, href: "/settings/traveler" },
 ];
 
-// ── Mock wishlist data ───────────────────────────────────────
-const initialWishlist = [
-    {
-        id: 1,
-        title: "I will take you on a verified ethical elephant safari in Udawalawe",
-        vendor: "Saman Wildlife",
-        vendorImg: "/images/traveler3.png",
-        image: "/images/elephant_safari_udawalawe.png",
-        rating: 5.0,
-        reviews: 89,
-        price: "8,500",
-        level: "Level 2 Seller",
-        location: "Udawalawe",
-        category: "Nature & Wildlife",
-        savedDate: "Mar 20, 2026",
-    },
-    {
-        id: 2,
-        title: "I will organize a private hike to Nine Arches Bridge at sunrise",
-        vendor: "Ella Trail Guides",
-        vendorImg: "/images/traveler3.png",
-        image: "/images/nine_arches_bridge_sunrise.png",
-        rating: 5.0,
-        reviews: 310,
-        price: "4,000",
-        level: "Top Rated",
-        location: "Ella",
-        category: "Adventure",
-        savedDate: "Mar 18, 2026",
-    },
-    {
-        id: 3,
-        title: "I will host an authentic Southern Sri Lankan cooking class in Galle",
-        vendor: "Kumari Jayawardena",
-        vendorImg: "/images/traveler2.png",
-        image: "/images/cooking_class_galle.png",
-        rating: 4.9,
-        reviews: 142,
-        price: "3,200",
-        level: "Top Rated",
-        location: "Galle",
-        category: "Culinary & Food",
-        savedDate: "Mar 15, 2026",
-    },
-    {
-        id: 4,
-        title: "I will guide a sunset TukTuk food tour around Colombo Fort",
-        vendor: "Nuwan's Tuk Tours",
-        vendorImg: "/images/traveler1.png",
-        image: "/images/tuktuk_food_tour_colombo.png",
-        rating: 4.8,
-        reviews: 215,
-        price: "2,800",
-        level: "Top Rated",
-        location: "Colombo",
-        category: "Transport",
-        savedDate: "Mar 12, 2026",
-    },
-    {
-        id: 5,
-        title: "I will host a traditional Ayurvedic healing and meditation session",
-        vendor: "Dr. Wickramasinghe",
-        vendorImg: "/images/traveler3.png",
-        image: "/images/ayurvedic_meditation_session_sri_lanka.png",
-        rating: 5.0,
-        reviews: 58,
-        price: "7,200",
-        level: "Verified Pro",
-        location: "Kandy",
-        category: "Wellness",
-        savedDate: "Mar 8, 2026",
-    },
-    {
-        id: 6,
-        title: "I will teach you how to surf at a hidden reef break in Weligama",
-        vendor: "Surfer Kasun",
-        vendorImg: "/images/traveler2.png",
-        image: "/images/surfing_weligama_reef.png",
-        rating: 4.9,
-        reviews: 120,
-        price: "4,500",
-        level: "Level 2 Seller",
-        location: "Weligama",
-        category: "Adventure",
-        savedDate: "Mar 5, 2026",
-    },
-];
-
 const categories = ["All", "Nature & Wildlife", "Adventure", "Culinary & Food", "Transport", "Wellness"];
 
 export default function WishlistPage() {
-    const [wishlist, setWishlist] = useState(initialWishlist);
+    const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
     const [categoryFilter, setCategoryFilter] = useState("All");
     const [search, setSearch] = useState("");
-    const [removingId, setRemovingId] = useState<number | null>(null);
+    const [removingId, setRemovingId] = useState<string | null>(null);
     const [clearedLabels, setClearedLabels] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Sidebar states matching TravelerSidebar
+    const [fullName, setFullName] = useState("");
+    const [unreadMessages, setUnreadMessages] = useState(0);
+    const [activeJourneys, setActiveJourneys] = useState(0);
 
     useEffect(() => {
         clearNavLabel("Wishlist");
         setClearedLabels(getClearedLabels());
+
+        async function fetchLiveWishlists() {
+            setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            // Header state
+            const { data: uData } = await supabase.from('users').select('full_name').eq('id', session.user.id).single();
+            if (uData) setFullName(uData.full_name || "");
+
+            // Fast counts for sidebar
+            const { count: msgCount } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', session.user.id).eq('is_read', false);
+            setUnreadMessages(msgCount || 0);
+
+            const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('traveler_id', session.user.id).in('status', ['Pending', 'Confirmed']);
+            setActiveJourneys(orderCount || 0);
+
+            // Supabase Join Query! Fetch wishlists + services + vendor users + locations in one shot
+            const { data: listData } = await supabase
+                .from('wishlists')
+                .select(`
+                    id,
+                    created_at,
+                    services (
+                        id,
+                        title,
+                        price,
+                        location_id,
+                        users (
+                            full_name,
+                            avatar_base64
+                        ),
+                        locations (
+                            name
+                        )
+                    )
+                `)
+                .eq('traveler_id', session.user.id)
+                .order('created_at', { ascending: false });
+
+            if (listData) {
+                const results: WishlistItem[] = listData.map((item: any) => {
+                    const serv = item.services;
+                    const dateObj = new Date(item.created_at);
+                    
+                    return {
+                        id: item.id,
+                        serviceId: serv.id,
+                        title: serv.title,
+                        vendor: serv.users?.full_name || "Unknown Partner",
+                        vendorImg: serv.users?.avatar_base64 || "/images/traveler1.png",
+                        image: "/images/cooking_class_galle.png", // Dummy placeholder MVP
+                        rating: 5.0, // MVP
+                        reviews: 0, // MVP
+                        price: serv.price.toString(),
+                        level: "Verified Partner",
+                        location: serv.locations?.name || "Sri Lanka",
+                        category: "Adventure", // MVP
+                        savedDate: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    };
+                });
+                setWishlist(results);
+            }
+            setLoading(false);
+        }
+        fetchLiveWishlists();
     }, []);
 
     const filtered = wishlist.filter((item) => {
@@ -158,8 +159,9 @@ export default function WishlistPage() {
         return matchCat && matchSearch;
     });
 
-    const removeItem = (id: number) => {
+    const removeItem = async (id: string) => {
         setRemovingId(id);
+        await supabase.from('wishlists').delete().eq('id', id);
         setTimeout(() => {
             setWishlist((prev) => prev.filter((i) => i.id !== id));
             setRemovingId(null);
@@ -184,13 +186,20 @@ export default function WishlistPage() {
 
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
                     {navItems.map(({ icon: Icon, label, active, count, href }) => {
-                        const rawCount = label === "Wishlist" ? wishlist.length : count;
+                        let rawCount = count;
+                        if (label === "Wishlist") rawCount = wishlist.length;
+                        if (label === "Message Artisan") rawCount = unreadMessages;
+                        if (label === "My Verified Journeys") rawCount = activeJourneys;
+
                         const displayCount = clearedLabels.includes(label) ? 0 : rawCount;
                         return (
                             <Link
                                 key={label}
                                 href={href}
-                                onClick={() => handleNavClick(label)}
+                                onClick={() => {
+                                    clearNavLabel(label);
+                                    setClearedLabels(getClearedLabels());
+                                }}
                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                                     active
                                         ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
@@ -215,10 +224,10 @@ export default function WishlistPage() {
                 <div className="p-4 border-t border-slate-100">
                     <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                            AL
+                            {fullName ? fullName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "AA"}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">Alex Müller</p>
+                            <p className="text-sm font-semibold text-slate-800 truncate">{loading ? "Loading..." : (fullName || "New User")}</p>
                             <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                         </div>
                         <Link

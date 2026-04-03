@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} antialiased font-sans`}>
+      <body className={`${outfit.variable} antialiased font-sans`} suppressHydrationWarning>
         {children}
       </body>
     </html>
