@@ -14,7 +14,9 @@ import {
     Sparkles,
     ChevronLeft,
     Clock,
-    Filter
+    Filter,
+    X,
+    Loader2
 } from "lucide-react";
 
 // --- Mock Data ---
@@ -91,6 +93,44 @@ export default function SearchDiscoveryPage() {
     const [hoveredVenderId, setHoveredVendorId] = useState<string | null>("v2"); // Default highlight for demo
     const [proximitySort, setProximitySort] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
+
+    // Derived state for filtered results
+    const filteredVendors = vendors.filter((vendor) => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (
+            vendor.title.toLowerCase().includes(query) ||
+            vendor.category.toLowerCase().includes(query)
+        );
+    });
+
+    const handleSearchChange = (val: string) => {
+        setSearchQuery(val);
+        
+        // Basic validation: Check for special characters that might be harmful or nonsensical
+        const specialCharRegex = /[<>{}[]\\^~]/;
+        if (specialCharRegex.test(val)) {
+            setValidationError("Search contains invalid characters");
+        } else if (val.length > 0 && val.length < 2) {
+            setValidationError("Please enter at least 2 characters");
+        } else {
+            setValidationError(null);
+        }
+
+        // Simulate a brief searching state for better UX
+        if (val.length >= 2 || val.length === 0) {
+            setIsSearching(true);
+            setTimeout(() => setIsSearching(false), 300);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchQuery("");
+        setValidationError(null);
+        setIsSearching(false);
+    };
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
@@ -107,21 +147,45 @@ export default function SearchDiscoveryPage() {
                         <h1 className="text-xl font-black text-slate-900 tracking-tight">Discover Ceygo</h1>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="relative group mb-4">
+                    <div className="relative group mb-2">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Search className="w-4 h-4 text-emerald-500" />
+                            {isSearching ? (
+                                <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+                            ) : (
+                                <Search className="w-4 h-4 text-emerald-500" />
+                            )}
                         </div>
                         <input
                             type="text"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className={`block w-full pl-11 pr-12 py-3.5 bg-slate-50 border rounded-2xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm ${
+                                validationError ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-emerald-500 focus:bg-white"
+                            }`}
                             placeholder="Search experiences, drivers, artisans..."
                         />
-                        <button className="absolute inset-y-0 right-2 my-auto h-8 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 shadow-sm transition-colors flex items-center">
-                            <SlidersHorizontal className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="absolute inset-y-0 right-2 flex items-center space-x-1">
+                            {searchQuery && (
+                                <button 
+                                    onClick={clearSearch}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                            <button className="h-8 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 shadow-sm transition-colors flex items-center">
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Validation Message */}
+                    <div className="h-4 mb-4">
+                        {validationError && (
+                            <p className="text-[10px] font-bold text-red-500 ml-4 animate-in fade-in slide-in-from-top-1">
+                                {validationError}
+                            </p>
+                        )}
                     </div>
 
                     {/* Filter Dropdowns */}
@@ -156,55 +220,82 @@ export default function SearchDiscoveryPage() {
 
                 {/* Results Feed */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Verified Local Vendors</p>
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            {searchQuery ? `Results for "${searchQuery}"` : "Verified Local Vendors"}
+                        </p>
+                        {searchQuery && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                {filteredVendors.length} found
+                            </span>
+                        )}
+                    </div>
 
-                    {vendors.map((vendor) => (
-                        <div
-                            key={vendor.id}
-                            onMouseEnter={() => setHoveredVendorId(vendor.id)}
-                            onMouseLeave={() => setHoveredVendorId("v2")} // Revert to default for display purposes
-                            className={`flex space-x-4 p-4 rounded-3xl bg-white border transition-all duration-200 cursor-pointer ${hoveredVenderId === vendor.id
-                                ? "border-[#0ea5e9]/40 shadow-md ring-4 ring-[#0ea5e9]/5"
-                                : "border-slate-100 shadow-sm hover:border-slate-200 hover:shadow-md"
-                                }`}
-                        >
-                            {/* Thumbnail */}
-                            <div className="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-slate-100">
-                                <Image src={vendor.image} alt={vendor.title} fill className="object-cover" />
-                                {vendor.verified && (
-                                    <div className="absolute top-2 left-2 bg-white rounded-full p-1 shadow-md">
-                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 fill-emerald-50" />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{vendor.category}</span>
-                                        <div className="flex items-center text-xs font-bold text-slate-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100">
-                                            <Star className="w-3 h-3 text-amber-500 fill-amber-500 mr-1" />
-                                            {vendor.rating} <span className="text-slate-400 font-normal ml-0.5">({vendor.reviews})</span>
+                    {filteredVendors.length > 0 ? (
+                        filteredVendors.map((vendor) => (
+                            <div
+                                key={vendor.id}
+                                onMouseEnter={() => setHoveredVendorId(vendor.id)}
+                                onMouseLeave={() => setHoveredVendorId("v2")} // Revert to default for display purposes
+                                className={`flex space-x-4 p-4 rounded-3xl bg-white border transition-all duration-200 cursor-pointer ${hoveredVenderId === vendor.id
+                                    ? "border-[#0ea5e9]/40 shadow-md ring-4 ring-[#0ea5e9]/5"
+                                    : "border-slate-100 shadow-sm hover:border-slate-200 hover:shadow-md"
+                                    }`}
+                            >
+                                {/* Thumbnail */}
+                                <div className="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-slate-100">
+                                    <Image src={vendor.image} alt={vendor.title} fill className="object-cover" />
+                                    {vendor.verified && (
+                                        <div className="absolute top-2 left-2 bg-white rounded-full p-1 shadow-md">
+                                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 fill-emerald-50" />
                                         </div>
-                                    </div>
-                                    <h3 className={`text-sm font-bold truncate ${hoveredVenderId === vendor.id ? "text-slate-900" : "text-slate-800"}`}>
-                                        {vendor.title}
-                                    </h3>
+                                    )}
                                 </div>
 
-                                <div className="flex items-center justify-between mt-2">
-                                    <div className="flex items-center space-x-1 text-slate-500">
-                                        <MapPin className="w-3.5 h-3.5" />
-                                        <span className="text-xs font-medium">{vendor.distance} away</span>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{vendor.category}</span>
+                                            <div className="flex items-center text-xs font-bold text-slate-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100">
+                                                <Star className="w-3 h-3 text-amber-500 fill-amber-500 mr-1" />
+                                                {vendor.rating} <span className="text-slate-400 font-normal ml-0.5">({vendor.reviews})</span>
+                                            </div>
+                                        </div>
+                                        <h3 className={`text-sm font-bold truncate ${hoveredVenderId === vendor.id ? "text-slate-900" : "text-slate-800"}`}>
+                                            {vendor.title}
+                                        </h3>
                                     </div>
-                                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                                        {vendor.price}
-                                    </span>
+
+                                    <div className="flex items-center justify-between mt-2">
+                                        <div className="flex items-center space-x-1 text-slate-500">
+                                            <MapPin className="w-3.5 h-3.5" />
+                                            <span className="text-xs font-medium">{vendor.distance} away</span>
+                                        </div>
+                                        <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                            {vendor.price}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500">
+                            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                                <Search className="w-8 h-8 text-slate-300" />
+                            </div>
+                            <h3 className="text-lg font-black text-slate-800 mb-2">No results found</h3>
+                            <p className="text-sm text-slate-500 max-w-[240px] mb-8 leading-relaxed">
+                                We couldn't find anything matching "<span className="font-bold text-slate-700">{searchQuery}</span>". Try different keywords or filters.
+                            </p>
+                            <button 
+                                onClick={clearSearch}
+                                className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
+                            >
+                                Clear Search
+                            </button>
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 
