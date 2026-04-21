@@ -7,7 +7,7 @@ import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
 import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient"; // TODO: re-integrate
 
 export default function SignUp() {
   const [role, setRole] = useState("Traveler");
@@ -21,24 +21,8 @@ export default function SignUp() {
   const [successMsg, setSuccessMsg] = useState("");
   const router = useRouter();
 
-  const handleGoogleAuth = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            // Pass the selected role so the DB trigger and callback can read it
-            access_type: 'offline',
-          },
-        },
-      });
-      // Store selected role in localStorage so callback page can update user metadata
-      localStorage.setItem('pending_google_role', role);
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Failed to authenticate with Google');
-    }
+  const handleGoogleAuth = () => {
+    setError("Google OAuth is not available yet. Please use email & password.");
   };
 
   const pwStrength = !password ? 0 : password.length < 6 ? 1 : password.length < 8 ? 2 : /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password) ? 4 : 3;
@@ -197,32 +181,8 @@ export default function SignUp() {
               if (cleanPassword.length < 8) { setError("Password must be at least 8 characters long."); return; }
               if (cleanPassword !== confirmPassword) { setError("Passwords do not match."); return; }
 
-              const { data, error } = await supabase.auth.signUp({
-                email: cleanEmail,
-                password: cleanPassword,
-                options: {
-                  data: {
-                    full_name: cleanName,
-                    role: role
-                  }
-                }
-              });
-
-              if (error) {
-                setError(error.message);
-                return;
-              }
-
-              if (data.user && data.user.identities && data.user.identities.length === 0) {
-                 setError("User already registered. Please sign in.");
-                 return;
-              }
-
-              if (!data.session) {
-                 setSuccessMsg("Success! Please check your email to verify your account.");
-                 return;
-              }
-
+              // ── Mock Signup ───────────────────────────
+              // Any valid input is accepted. Backend will be re-integrated later.
               setSuccessMsg("Account created! Redirecting...");
               setTimeout(() => {
                   document.cookie = "auth=true; path=/";

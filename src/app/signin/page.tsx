@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
-import { supabase } from "@/lib/supabaseClient";
 
 function SignInContent() {
   const [role, setRole] = useState("Traveler");
@@ -26,20 +25,8 @@ function SignInContent() {
     }
   }, [searchParams]);
 
-  const handleGoogleAuth = async () => {
-    try {
-      // Save which role the user selected so callback can enforce it
-      localStorage.setItem('pending_signin_role', role);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        },
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Failed to authenticate with Google');
-    }
+  const handleGoogleAuth = () => {
+    setError("Google OAuth is not available yet. Please use email & password.");
   };
 
   useEffect(() => {
@@ -163,7 +150,7 @@ function SignInContent() {
               />
             </div>
 
-            <form className="space-y-5" noValidate onSubmit={async (e) => {
+            <form className="space-y-5" noValidate onSubmit={(e) => {
               e.preventDefault();
               setError("");
 
@@ -191,35 +178,11 @@ function SignInContent() {
                 return;
               }
 
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email: cleanEmail,
-                password: cleanPassword,
-              });
-
-              if (error) {
-                setError(error.message || "Invalid credentials. Please use correct email and password.");
-                return;
-              }
-
-              // Check user's role stored in Supabase auth metadata (set at signup)
-              const userRole = data.user?.user_metadata?.role || "Traveler";
-
-              // Admin bypasses the toggle — redirect directly to admin panel
-              if (userRole === "Admin") {
-                  document.cookie = "auth=true; path=/";
-                  router.push("/admin");
-                  return;
-              }
-
-              // Traveler/Partner MUST match the selected toggle — strict enforcement
-              if (userRole !== role) {
-                  setError(`This account is registered as a ${userRole}. Please select the correct role to sign in.`);
-                  return;
-              }
-
-              // Redirect to the correct dashboard based on stored role
+              // ── Mock Auth ──────────────────────────────
+              // Any valid email + password (≥5 chars) is accepted.
+              // Role is determined by the toggle the user selected.
               document.cookie = "auth=true; path=/";
-              router.push(userRole === "Partner" ? "/partnerdashboard" : "/dashboard");
+              router.push(role === "Partner" ? "/partnerdashboard" : "/dashboard");
             }}>
               <Input
                 label="Email"

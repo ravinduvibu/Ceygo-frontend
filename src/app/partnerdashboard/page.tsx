@@ -109,7 +109,9 @@ function DashboardContent() {
             <CreateServiceModal 
                 isOpen={isCreateModalOpen} 
                 onClose={() => setIsCreateModalOpen(false)} 
-                onAddService={handleAddDashboardService} 
+                onAddService={handleAddDashboardService}
+                onNotify={(msg: string) => console.log(msg)}
+                partnerId="mock-partner-001"
             />
 
             {/* ── Sidebar ── */}

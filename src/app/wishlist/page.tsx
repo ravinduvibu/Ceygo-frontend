@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import TravelerSidebar from "@/components/TravelerSidebar";
 
 export interface WishlistItem {
     id: string; // the wishlist row ID
@@ -83,71 +83,14 @@ export default function WishlistPage() {
         clearNavLabel("Wishlist");
         setClearedLabels(getClearedLabels());
 
-        async function fetchLiveWishlists() {
-            setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            // Header state
-            const { data: uData } = await supabase.from('users').select('full_name').eq('id', session.user.id).single();
-            if (uData) setFullName(uData.full_name || "");
-
-            // Fast counts for sidebar
-            const { count: msgCount } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', session.user.id).eq('is_read', false);
-            setUnreadMessages(msgCount || 0);
-
-            const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('traveler_id', session.user.id).in('status', ['Pending', 'Confirmed']);
-            setActiveJourneys(orderCount || 0);
-
-            // Supabase Join Query! Fetch wishlists + services + vendor users + locations in one shot
-            const { data: listData } = await supabase
-                .from('wishlists')
-                .select(`
-                    id,
-                    created_at,
-                    services (
-                        id,
-                        title,
-                        price,
-                        location_id,
-                        users (
-                            full_name,
-                            avatar_base64
-                        ),
-                        locations (
-                            name
-                        )
-                    )
-                `)
-                .eq('traveler_id', session.user.id)
-                .order('created_at', { ascending: false });
-
-            if (listData) {
-                const results: WishlistItem[] = listData.map((item: any) => {
-                    const serv = item.services;
-                    const dateObj = new Date(item.created_at);
-                    
-                    return {
-                        id: item.id,
-                        serviceId: serv.id,
-                        title: serv.title,
-                        vendor: serv.users?.full_name || "Unknown Partner",
-                        vendorImg: serv.users?.avatar_base64 || "/images/traveler1.png",
-                        image: "/images/cooking_class_galle.png", // Dummy placeholder MVP
-                        rating: 5.0, // MVP
-                        reviews: 0, // MVP
-                        price: serv.price.toString(),
-                        level: "Verified Partner",
-                        location: serv.locations?.name || "Sri Lanka",
-                        category: "Adventure", // MVP
-                        savedDate: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    };
-                });
-                setWishlist(results);
-            }
-            setLoading(false);
-        }
-        fetchLiveWishlists();
+        // ── Mock Wishlist Data ─────────────────────────────────
+        const mockData: WishlistItem[] = [
+            { id: "w1", serviceId: "gig-001", title: "Sunset TukTuk City Tour through the streets of Colombo", vendor: "Nuwan Perera", vendorImg: "/images/traveler1.png", image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600", rating: 4.9, reviews: 128, price: "2,800", level: "Top Rated", location: "Colombo", category: "Adventure", savedDate: "Apr 10, 2026" },
+            { id: "w2", serviceId: "gig-002", title: "Hidden Colombo Street Food Walk — Local Secrets Only", vendor: "Saman Silva", vendorImg: "/images/traveler2.png", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600", rating: 5.0, reviews: 47, price: "4,500", level: "Verified Pro", location: "Pettah, Colombo", category: "Culinary & Food", savedDate: "Apr 8, 2026" },
+            { id: "w3", serviceId: "gig-003", title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day", vendor: "Priya Fernando", vendorImg: "/images/traveler3.png", image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600", rating: 4.8, reviews: 214, price: "12,000", level: "Top Rated", location: "Sigiriya", category: "Nature & Wildlife", savedDate: "Apr 5, 2026" },
+        ];
+        setWishlist(mockData);
+        setLoading(false);
     }, []);
 
     const filtered = wishlist.filter((item) => {
@@ -159,9 +102,8 @@ export default function WishlistPage() {
         return matchCat && matchSearch;
     });
 
-    const removeItem = async (id: string) => {
+    const removeItem = (id: string) => {
         setRemovingId(id);
-        await supabase.from('wishlists').delete().eq('id', id);
         setTimeout(() => {
             setWishlist((prev) => prev.filter((i) => i.id !== id));
             setRemovingId(null);
@@ -177,70 +119,7 @@ export default function WishlistPage() {
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
 
             {/* ── Sidebar ── */}
-            <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm">
-                <div className="px-5 py-5 flex items-center space-x-3 border-b border-slate-100">
-                    <div className="relative h-9 w-28">
-                        <Image src="/images/logo_transparent.png" alt="Ceygo" fill className="object-contain" priority />
-                    </div>
-                </div>
-
-                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, count, href }) => {
-                        let rawCount = count;
-                        if (label === "Wishlist") rawCount = wishlist.length;
-                        if (label === "Message Artisan") rawCount = unreadMessages;
-                        if (label === "My Verified Journeys") rawCount = activeJourneys;
-
-                        const displayCount = clearedLabels.includes(label) ? 0 : rawCount;
-                        return (
-                            <Link
-                                key={label}
-                                href={href}
-                                onClick={() => {
-                                    clearNavLabel(label);
-                                    setClearedLabels(getClearedLabels());
-                                }}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                                    active
-                                        ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                                }`}
-                            >
-                                <div className="flex items-center space-x-3">
-                                    <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
-                                    <span>{label}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                    {displayCount > 0 && (
-                                        <span className="text-xs font-bold bg-[#ff6b35]/10 text-[#ff6b35] px-1.5 py-0.5 rounded-full">{displayCount}</span>
-                                    )}
-                                    {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </nav>
-
-                <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                            {fullName ? fullName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "AA"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{loading ? "Loading..." : (fullName || "New User")}</p>
-                            <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
-                        </div>
-                        <Link
-                            href="/"
-                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
-                            className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
-                            title="Log out"
-                        >
-                            <LogOut className="w-4 h-4" />
-                        </Link>
-                    </div>
-                </div>
-            </aside>
+            <TravelerSidebar activePage="Wishlist" />
 
             {/* ── Main ── */}
             <div className="flex-1 flex flex-col overflow-hidden">
