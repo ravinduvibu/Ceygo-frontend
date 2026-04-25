@@ -211,9 +211,9 @@ export default function SearchDiscoveryPage() {
                     )}
 
                     {!loading && gigs.map((gig) => (
-                        <Link
+                        <div
                             key={gig.id}
-                            href={`/gig/${gig.id}`}
+                            onClick={() => setHoveredId(gig.id)}
                             onMouseEnter={() => setHoveredId(gig.id)}
                             onMouseLeave={() => setHoveredId(gigs[0]?.id ?? null)}
                             className={`flex space-x-4 p-4 rounded-3xl bg-white border transition-all duration-200 cursor-pointer ${
@@ -268,7 +268,7 @@ export default function SearchDiscoveryPage() {
                                     </span>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             </div>
