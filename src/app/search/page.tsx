@@ -8,7 +8,6 @@ import type { GigMapItem } from "@/components/GigMap";
 import {
     Search,
     SlidersHorizontal,
-    ChevronDown,
     MapPin,
     Star,
     ShieldCheck,
@@ -157,15 +156,6 @@ export default function SearchDiscoveryPage() {
                         )}
                     </div>
 
-                    {/* Filter pills */}
-                    <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {["Categories", "Price Range", "Ratings"].map((filter) => (
-                            <button key={filter} className="flex-shrink-0 flex items-center space-x-1.5 px-3.5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors shadow-sm">
-                                <span>{filter}</span>
-                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                        ))}
-                    </div>
                 </div>
 
                 {/* Results */}
