@@ -7,7 +7,6 @@ import {
     ShieldCheck,
     BarChart3,
     CalendarCheck2,
-    Activity,
     Settings,
     Star,
     Bell,
@@ -32,7 +31,6 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    Line,
 } from "recharts";
 
 // ── Mock Data ──────────────────────────────────────────────
@@ -185,14 +183,16 @@ export default function AdminDashboard() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
                             <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
                         </div>
-                        <Link 
-                            href="/" 
-                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        <button
+                            onClick={async () => {
+                                await fetch("/api/auth/set-role", { method: "DELETE" });
+                                window.location.replace("/signin");
+                            }}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                             title="Log out"
                         >
                             <LogOut className="w-4 h-4" />
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </aside>

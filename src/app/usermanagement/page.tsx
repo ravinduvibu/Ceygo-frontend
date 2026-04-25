@@ -7,7 +7,6 @@ import {
     ShieldCheck,
     BarChart3,
     CalendarCheck2,
-    Activity,
     Settings,
     Star,
     ChevronRight,
@@ -15,10 +14,8 @@ import {
     Bell,
     LogOut,
     Crown,
-    Shield,
     UserCircle2,
     Store,
-    MoreHorizontal,
     X,
     Lock,
     AlertTriangle,
@@ -184,17 +181,6 @@ export default function UserManagement() {
     const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
-    const [loading, setLoading] = useState(false);
-
-    const fetchUsers = async () => {
-        setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        fetchUsers();
-    }, []);
 
     const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
@@ -287,7 +273,7 @@ export default function UserManagement() {
                 <div className="p-4 border-t border-slate-100">
                     <Link 
                         href="/" 
-                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        onClick={async () => { await fetch("/api/auth/set-role", { method: "DELETE" }); window.location.replace("/signin"); }}
                         className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">SA</div>
@@ -670,7 +656,7 @@ export default function UserManagement() {
                                         type="text"
                                         placeholder="e.g. Maya Silva"
                                         value={newUserForm.name}
-                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUserForm({ ...newUserForm, name: e.target.value })}
                                         className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
                                     />
                                 </div>
@@ -686,7 +672,7 @@ export default function UserManagement() {
                                         type="email"
                                         placeholder="e.g. maya@ceygo.lk"
                                         value={newUserForm.email}
-                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUserForm({ ...newUserForm, email: e.target.value })}
                                         className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
                                     />
                                 </div>
@@ -702,7 +688,7 @@ export default function UserManagement() {
                                         type="password"
                                         placeholder="Min 6 characters"
                                         value={newUserForm.password}
-                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                                         className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all"
                                     />
                                 </div>
@@ -712,7 +698,7 @@ export default function UserManagement() {
                                 <div className="relative">
                                     <select
                                         value={newUserForm.role}
-                                        onChange={(e: any) => setNewUserForm({ ...newUserForm, role: e.target.value as Role })}
+                                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewUserForm({ ...newUserForm, role: e.target.value as Role })}
                                         className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#ff6b35] focus:ring-2 focus:ring-[#ff6b35]/20 transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="Admin">Administrator (Full Access)</option>

@@ -7,17 +7,17 @@ interface CreateServiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAddService: (service: Gig) => void;
-    onNotify: (message: string, type: any) => void;
+    onNotify: (message: string, type: "error" | "pause" | "resume" | "delete" | "success") => void;
     partnerId: string | null;
 }
 
-export default function CreateServiceModal({ isOpen, onClose, onAddService, onNotify, partnerId }: CreateServiceModalProps) {
+export default function CreateServiceModal({ isOpen, onClose, onAddService, onNotify: _onNotify, partnerId: _partnerId }: CreateServiceModalProps) {
     const [title, setTitle] = useState("");
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("Tour");
     const [location, setLocation] = useState("");
     const [description, setDescription] = useState("");
-    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);

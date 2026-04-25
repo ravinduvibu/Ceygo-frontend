@@ -16,10 +16,10 @@ import {
     Star,
     MoreHorizontal,
     TrendingUp,
-    Send
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Gig } from "@/types/gig";
 import MyServices from "@/components/partner/MyServices";
 import ActiveOrders from "@/components/partner/ActiveOrders";
 import Inbox from "@/components/partner/Inbox";
@@ -53,16 +53,6 @@ const inboxMessages = [
     { id: 4, sender: "System", avatar: "🤖", time: "1d ago", text: "Your payout of LKR 24,500 has been processed.", unread: false },
 ];
 
-function StarRating({ rating }: { rating: number }) {
-    return (
-        <div className="flex items-center space-x-0.5">
-            {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} className="w-3 h-3" fill={s <= Math.round(rating) ? "#f59e0b" : "transparent"} stroke={s <= Math.round(rating) ? "#f59e0b" : "#d1d5db"} strokeWidth={1.5} />
-            ))}
-        </div>
-    );
-}
-
 function DashboardContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -75,12 +65,6 @@ function DashboardContent() {
 
     // Sync tab param if missing on mount
     useEffect(() => {
-        // Immediate client-side auth check to prevent bfcache bypassing middleware
-        if (!document.cookie.includes('auth=')) {
-            window.location.replace('/');
-            return;
-        }
-
         if (!tabParam && activeTab === "Dashboard") {
             router.replace(`?tab=Dashboard`, { scroll: false });
         }
@@ -91,12 +75,12 @@ function DashboardContent() {
         router.push(`?tab=${encodeURIComponent(tab)}`, { scroll: false });
     };
 
-    const handleAddDashboardService = (newSvc: any) => {
+    const handleAddDashboardService = (newSvc: Gig) => {
         // Map the modal service to dashboard service format
         setDashboardServices([{
-            id: newSvc.id,
+            id: Number(newSvc.id),
             title: newSvc.title,
-            image: newSvc.emoji || "✨",
+            image: (newSvc.emoji as string) || "✨",
             activeOrders: 0,
             price: newSvc.price,
             rating: 0,
@@ -170,10 +154,10 @@ function DashboardContent() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Nuwan Perera</p>
                             <p className="text-xs text-slate-400 truncate">TukTuk Partner</p>
                         </div>
-                        <button 
-                            onClick={() => { 
-                                document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
-                                window.location.replace("/"); 
+                        <button
+                            onClick={async () => {
+                                await fetch("/api/auth/set-role", { method: "DELETE" });
+                                window.location.replace("/signin");
                             }}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                             title="Log out"
@@ -189,7 +173,7 @@ function DashboardContent() {
                 <header className="h-20 flex-shrink-0 flex items-center justify-between px-8 bg-white border-b border-slate-200">
                     <div>
                         <h1 className="text-xl font-bold text-slate-900">Welcome back, Nuwan 👋</h1>
-                        <p className="text-sm text-slate-400 mt-0.5">Here's what's happening with your business today.</p>
+                        <p className="text-sm text-slate-400 mt-0.5">Here&apos;s what&apos;s happening with your business today.</p>
                     </div>
                 </header>
 

@@ -291,7 +291,7 @@ export default function VerificationPage() {
                 <div className="p-4 border-t border-slate-100">
                     <Link
                         href="/"
-                        onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                        onClick={async () => { await fetch("/api/auth/set-role", { method: "DELETE" }); window.location.replace("/signin"); }}
                         className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">SA</div>
@@ -663,7 +663,7 @@ export default function VerificationPage() {
                                                 className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-all shadow-sm shadow-emerald-200 flex items-center justify-center space-x-2"
                                             >
                                                 <ShieldCheck className="w-4 h-4" />
-                                                <span>Grant 'Verified Shield' ✓</span>
+                                                <span>Grant &apos;Verified Shield&apos; ✓</span>
                                             </button>
                                             <button
                                                 onClick={() => setDecision("clarify")}

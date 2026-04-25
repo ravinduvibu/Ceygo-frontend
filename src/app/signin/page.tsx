@@ -6,42 +6,129 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
 import Input from "@/components/Input";
+import { createClient } from "@/lib/supabase/client";
+import { setRoleCookie } from "@/lib/roleClient";
+
+const ROLE_HOME: Record<string, string> = {
+  traveler: "/dashboard",
+  partner: "/partnerdashboard",
+  admin: "/admin",
+};
 
 function SignInContent() {
   const [role, setRole] = useState("Traveler");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Show error toast if redirected back from /auth/callback with ?error=...
   useEffect(() => {
-    const urlError = searchParams.get('error');
+    const urlError = searchParams.get("error");
     if (urlError) {
-      setError(decodeURIComponent(urlError));
-      // Clean the URL so the error doesn't persist on refresh
-      window.history.replaceState({}, '', '/signin');
+      setTimeout(() => {
+        setError(decodeURIComponent(urlError));
+        window.history.replaceState({}, "", "/signin");
+      }, 0);
     }
   }, [searchParams]);
 
-  const handleGoogleAuth = () => {
-    setError("Google OAuth is not available yet. Please use email & password.");
-  };
-
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(""), 4000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setError(""), 4000);
+      return () => clearTimeout(t);
     }
   }, [error]);
 
+  const handleGoogleAuth = async () => {
+    const supabase = createClient();
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/api/auth/callback?role=${role.toLowerCase()}`,
+      },
+    });
+    if (oauthError) setError(oauthError.message);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail) { setError("Email is required."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) { setError("Please enter a valid email address."); return; }
+    if (!cleanPassword) { setError("Password is required."); return; }
+    if (cleanPassword.length < 5) { setError("Password must be at least 5 characters."); return; }
+
+    setLoading(true);
+
+    // Dev bypass — always check hardcoded test accounts first
+    const DEV_USERS = [
+      { email: "travaller@gmail.com", password: "travaller12345678", role: "traveler" },
+      { email: "partner@gmail.com",   password: "partner12345678",   role: "partner"  },
+      { email: "admin@gmail.com",     password: "admin12345678",     role: "admin"    },
+    ];
+    const devUser = DEV_USERS.find(u => u.email === cleanEmail && u.password === cleanPassword);
+    if (devUser) {
+      if (devUser.role !== role.toLowerCase()) {
+        setLoading(false);
+        setError(`This account is registered as a ${devUser.role}. Please select the correct role.`);
+        return;
+      }
+      await setRoleCookie(devUser.role);
+      router.push(ROLE_HOME[devUser.role]);
+      return;
+    }
+
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: cleanPassword,
+    });
+
+    if (authError || !user) {
+      setLoading(false);
+      setError(authError?.message ?? "Sign in failed. Please check your credentials.");
+      return;
+    }
+
+    // Fetch role from DB
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const dbRole = profile?.role as string | undefined;
+
+    if (!dbRole) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError("Account not found. Please sign up first.");
+      return;
+    }
+
+    const selectedRole = role.toLowerCase();
+    if (dbRole !== selectedRole) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError(`This account is registered as a ${dbRole}. Please select the correct role.`);
+      return;
+    }
+
+    await setRoleCookie(dbRole);
+    router.push(ROLE_HOME[dbRole] ?? "/dashboard");
+  };
+
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row bg-slate-50 relative">
-      {/* Toast Popup */}
+      {/* Toast */}
       <div
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${error ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"
-          }`}
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform ${error ? "translate-y-0 opacity-100" : "-translate-y-12 opacity-0 pointer-events-none"}`}
       >
         <div className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white shadow-2xl shadow-slate-900/40 border border-slate-800">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500/20 text-red-500 shrink-0">
@@ -52,36 +139,20 @@ function SignInContent() {
           <span className="text-sm font-semibold tracking-wide">{error}</span>
         </div>
       </div>
-      {/* Left Pane - Brand / Hero */}
+
+      {/* Left Pane */}
       <div className="relative hidden w-full lg:flex lg:w-1/2 flex-col justify-between p-12 overflow-hidden">
-        {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/sri-lanka-landscape.png"
-            alt="Sri Lanka beautiful landscape"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* Subtle gradient overlay to ensure text legibility */}
+          <Image src="/images/sri-lanka-landscape.png" alt="Sri Lanka beautiful landscape" fill sizes="50vw" className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-slate-900/10" />
         </div>
-
-        {/* Content Over Image */}
         <div className="relative z-10 flex flex-col items-start space-y-2">
           <div className="flex items-center">
             <div className="relative h-20 w-48 p-2">
-              <Image
-                src="/images/logo_transparent.png"
-                alt="Ceygo Logo"
-                fill
-                className="object-contain p-1 invert dark:invert-0 drop-shadow-md"
-                priority
-              />
+              <Image src="/images/logo_transparent.png" alt="Ceygo Logo" fill sizes="192px" className="object-contain p-1 invert dark:invert-0 drop-shadow-md" priority />
             </div>
           </div>
         </div>
-
         <div className="relative z-10 space-y-4 max-w-lg">
           <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
             Discover the <span className="text-primary">pearl</span> of the Indian Ocean
@@ -89,127 +160,46 @@ function SignInContent() {
           <p className="text-lg text-slate-200">
             Your premium gateway to authentic Sri Lankan experiences, seamless bookings, and unforgettable journeys.
           </p>
-
           <div className="flex space-x-4 pt-4">
-            {/* Small avatars/social proof could go here */}
             <div className="flex -space-x-3">
-              <div className="relative h-10 w-10 rounded-full border-2 border-slate-900 overflow-hidden shadow-sm">
-                <Image src="/images/traveler1.png" alt="Traveler" fill className="object-cover" />
-              </div>
-              <div className="relative h-10 w-10 rounded-full border-2 border-slate-900 overflow-hidden shadow-sm">
-                <Image src="/images/traveler3.png" alt="Traveler" fill className="object-cover" />
-              </div>
-              <div className="relative h-10 w-10 rounded-full border-2 border-slate-900 overflow-hidden shadow-sm">
-                <Image src="/images/traveler2.png" alt="Traveler" fill className="object-cover" />
-              </div>
+              {["traveler1", "traveler3", "traveler2"].map((img) => (
+                <div key={img} className="relative h-10 w-10 rounded-full border-2 border-slate-900 overflow-hidden shadow-sm">
+                  <Image src={`/images/${img}.png`} alt="Traveler" fill sizes="40px" className="object-cover" />
+                </div>
+              ))}
             </div>
-            <p className="text-sm text-slate-300 flex items-center font-medium">
-              Join 10k+ <br /> happy travelers
-            </p>
+            <p className="text-sm text-slate-300 flex items-center font-medium">Join 10k+ <br /> happy travelers</p>
           </div>
         </div>
       </div>
 
-      {/* Right Pane - Auth Form */}
+      {/* Right Pane */}
       <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-6 sm:p-12 lg:p-24 relative overflow-hidden">
-
-        {/* Decorative Background Elements for mobile/light theme */}
         <div className="absolute top-0 right-0 -m-32 h-[30rem] w-[30rem] rounded-full bg-primary/5 blur-3xl lg:hidden" />
         <div className="absolute bottom-0 left-0 -m-32 h-[30rem] w-[30rem] rounded-full bg-brand-blue/5 blur-3xl lg:hidden" />
 
         <div className="w-full max-w-md space-y-8 relative z-10">
-
-          {/* Mobile Header (Hidden on Desktop) */}
           <div className="flex lg:hidden flex-col items-center space-y-4 mb-4 mt-8">
             <div className="relative h-20 w-48 p-2 drop-shadow-sm">
-              <Image
-                src="/images/logo_transparent.png"
-                alt="Ceygo Logo"
-                fill
-                className="object-contain p-1 dark:invert"
-                priority
-              />
+              <Image src="/images/logo_transparent.png" alt="Ceygo Logo" fill sizes="192px" className="object-contain p-1 dark:invert" priority />
             </div>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
-              Welcome back
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Please enter your details to sign in.
-            </p>
+            <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">Welcome back</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Please enter your details to sign in.</p>
           </div>
 
           <div className="glass-panel rounded-2xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
             <div className="mb-8">
-              <RoleToggle
-                roles={["Traveler", "Partner", "Admin"]}
-                defaultRole={role}
-                onRoleChange={setRole}
-              />
+              <RoleToggle roles={["Traveler", "Partner", "Admin"]} defaultRole={role} onRoleChange={setRole} />
             </div>
 
-            <form className="space-y-5" noValidate onSubmit={(e) => {
-              e.preventDefault();
-              setError("");
-
-              const cleanEmail = email.trim();
-              const cleanPassword = password.trim();
-
-              if (!cleanEmail) {
-                setError("Email is required.");
-                return;
-              }
-
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              if (!emailRegex.test(cleanEmail)) {
-                setError("Please enter a valid email address.");
-                return;
-              }
-
-              if (!cleanPassword) {
-                setError("Password is required.");
-                return;
-              }
-
-              if (cleanPassword.length < 5) {
-                setError("Password must be at least 5 characters long.");
-                return;
-              }
-
-              // ── Mock Auth with Hardcoded Credentials ───────────────────────
-              const credentials = {
-                Traveler: { email: "travaller@gmail.com", password: "travaller12345678", redirect: "/dashboard" },
-                Partner: { email: "partner@gmail.com", password: "partner12345678", redirect: "/partnerdashboard" },
-                Admin: { email: "admin@gmail.com", password: "admin12345678", redirect: "/admin" }
-              };
-
-              const userCreds = credentials[role as keyof typeof credentials];
-
-              if (cleanEmail === userCreds.email && cleanPassword === userCreds.password) {
-                document.cookie = "auth=true; path=/";
-                router.push(userCreds.redirect);
-              } else {
-                setError(`Invalid ${role} credentials. Please check your email and password.`);
-              }
-            }}>
-              <Input
-                label="Email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+              <Input label="Email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
               <div className="space-y-1">
-                <Input
-                  label="Password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
                 <div className="flex justify-end pt-1">
                   <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
                     Forgot password?
@@ -220,9 +210,10 @@ function SignInContent() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-hover hover:shadow-md hover:shadow-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98]"
+                  disabled={loading}
+                  className="w-full rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-hover hover:shadow-md hover:shadow-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Sign in as {role}
+                  {loading ? "Signing in…" : `Sign in as ${role}`}
                 </button>
               </div>
             </form>
@@ -252,16 +243,12 @@ function SignInContent() {
 
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
-              Don't have an account?{" "}
-              <Link href="/signup" className="font-semibold text-primary hover:text-primary-hover transition-colors">
-                Sign up
-              </Link>
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="font-semibold text-primary hover:text-primary-hover transition-colors">Sign up</Link>
             </p>
           </div>
-
         </div>
 
-        {/* Security Badge Footer */}
         <div className="absolute bottom-6 left-0 right-0 flex justify-center lg:justify-start lg:left-12 lg:right-auto opacity-70 hover:opacity-100 transition-opacity">
           <div className="flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-100/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-slate-200">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
@@ -276,13 +263,13 @@ function SignInContent() {
 }
 
 export default function SignInPage() {
-    return (
-        <Suspense fallback={
-            <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-                <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#ff6b35] animate-spin" />
-            </div>
-        }>
-            <SignInContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#ff6b35] animate-spin" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
+  );
 }

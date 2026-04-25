@@ -17,5 +17,5 @@ export interface Gig {
     location?: string;
     description?: string;
     is_active?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
 }

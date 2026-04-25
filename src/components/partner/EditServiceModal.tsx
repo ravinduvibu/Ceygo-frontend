@@ -8,15 +8,15 @@ interface EditServiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (updated: Gig) => void;
-    onNotify: (message: string, type: any) => void;
+    onNotify: (message: string, type: "error" | "pause" | "resume" | "delete" | "success") => void;
 }
 
-export default function EditServiceModal({ service, isOpen, onClose, onSave, onNotify }: EditServiceModalProps) {
+export default function EditServiceModal({ service, isOpen, onClose, onSave, onNotify: _onNotify }: EditServiceModalProps) {
     const [title, setTitle] = useState("");
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("Tour");
     const [location, setLocation] = useState("");
-    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -25,15 +25,17 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave, onN
     // Prefill with current service values whenever modal opens
     useEffect(() => {
         if (service && isOpen) {
-            setTitle(service.title);
-            // Strip "LKR " prefix and commas from price for editing
-            setPrice(service.price.replace(/^LKR\s?/, "").replace(/,/g, ""));
-            setCategory(service.category || "Tour");
-            setLocation(service.location || "");
-            setImagePreview(service.image);
-            setImageFile(null);
-            setSaved(false);
-            setIsSubmitting(false);
+            setTimeout(() => {
+                setTitle(service.title);
+                // Strip "LKR " prefix and commas from price for editing
+                setPrice(service.price.replace(/^LKR\s?/, "").replace(/,/g, ""));
+                setCategory(service.category || "Tour");
+                setLocation(service.location || "");
+                setImagePreview(service.image);
+                setImageFile(null);
+                setSaved(false);
+                setIsSubmitting(false);
+            }, 0);
         }
     }, [service, isOpen]);
 

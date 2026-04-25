@@ -162,6 +162,7 @@ export default function AdminSettings() {
                     <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                         {/* Live avatar preview in sidebar */}
                         {avatarSrc ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={avatarSrc} alt="avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200" />
                         ) : (
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
@@ -174,7 +175,7 @@ export default function AdminSettings() {
                         </div>
                         <Link
                             href="/"
-                            onClick={() => { document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; }}
+                            onClick={async () => { await fetch("/api/auth/set-role", { method: "DELETE" }); window.location.replace("/signin"); }}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                             title="Log out"
                         >
@@ -232,6 +233,7 @@ export default function AdminSettings() {
                                             <div className="flex items-center space-x-6">
                                                 <div className="relative flex-shrink-0">
                                                     {avatarSrc ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
                                                         <img src={avatarSrc} alt="Profile" className="w-20 h-20 rounded-2xl object-cover border-2 border-slate-200 shadow-sm" />
                                                     ) : (
                                                         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center shadow-sm">
@@ -396,7 +398,7 @@ export default function AdminSettings() {
                                                 </div>
                                                 {confirmPw && confirmPw !== newPw && (
                                                     <p className="text-[11px] text-red-500 font-medium flex items-center space-x-1">
-                                                        <AlertTriangle className="w-3 h-3" /><span>Passwords don't match</span>
+                                                        <AlertTriangle className="w-3 h-3" /><span>Passwords don&apos;t match</span>
                                                     </p>
                                                 )}
                                                 {confirmPw && confirmPw === newPw && newPw.length >= 8 && (

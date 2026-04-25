@@ -186,7 +186,7 @@ export default function LeaveReviewPage() {
                                 </div>
                                 <p className="text-xs text-slate-500 flex items-center space-x-1.5">
                                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>This review will appear publicly on Dinesh's profile.</span>
+                                    <span>This review will appear publicly on Dinesh&apos;s profile.</span>
                                 </p>
                             </div>
 

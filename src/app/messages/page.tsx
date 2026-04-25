@@ -23,7 +23,7 @@ export default function MessagesPage() {
                         <MessageSquare className="w-16 h-16 text-slate-300" />
                         <h2 className="text-lg font-bold text-slate-700">Messages Coming Soon</h2>
                         <p className="text-slate-500 text-sm max-w-sm text-center">
-                            We're building a secure, translation-enabled messaging platform to connect you directly with local artisans.
+                            We&apos;re building a secure, translation-enabled messaging platform to connect you directly with local artisans.
                         </p>
                     </div>
                 </main>

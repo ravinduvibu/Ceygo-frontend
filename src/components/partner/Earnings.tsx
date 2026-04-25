@@ -309,7 +309,7 @@ export default function Earnings() {
                                 <Tooltip 
                                     cursor={{ fill: '#f8fafc' }}
                                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: any) => [`LKR ${Number(value).toLocaleString()}`, "Revenue"]}
+                                    formatter={(value: number | undefined) => [`LKR ${(value ?? 0).toLocaleString()}`, "Revenue"]}
                                 />
                                 <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                                     {earningsData.map((entry, index) => (

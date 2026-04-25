@@ -81,16 +81,18 @@ export default function WishlistPage() {
 
     useEffect(() => {
         clearNavLabel("Wishlist");
-        setClearedLabels(getClearedLabels());
+        setTimeout(() => {
+            setClearedLabels(getClearedLabels());
 
-        // ── Mock Wishlist Data ─────────────────────────────────
-        const mockData: WishlistItem[] = [
-            { id: "w1", serviceId: "gig-001", title: "Sunset TukTuk City Tour through the streets of Colombo", vendor: "Nuwan Perera", vendorImg: "/images/traveler1.png", image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600", rating: 4.9, reviews: 128, price: "2,800", level: "Top Rated", location: "Colombo", category: "Adventure", savedDate: "Apr 10, 2026" },
-            { id: "w2", serviceId: "gig-002", title: "Hidden Colombo Street Food Walk — Local Secrets Only", vendor: "Saman Silva", vendorImg: "/images/traveler2.png", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600", rating: 5.0, reviews: 47, price: "4,500", level: "Verified Pro", location: "Pettah, Colombo", category: "Culinary & Food", savedDate: "Apr 8, 2026" },
-            { id: "w3", serviceId: "gig-003", title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day", vendor: "Priya Fernando", vendorImg: "/images/traveler3.png", image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600", rating: 4.8, reviews: 214, price: "12,000", level: "Top Rated", location: "Sigiriya", category: "Nature & Wildlife", savedDate: "Apr 5, 2026" },
-        ];
-        setWishlist(mockData);
-        setLoading(false);
+            // ── Mock Wishlist Data ─────────────────────────────────
+            const mockData: WishlistItem[] = [
+                { id: "w1", serviceId: "gig-001", title: "Sunset TukTuk City Tour through the streets of Colombo", vendor: "Nuwan Perera", vendorImg: "/images/traveler1.png", image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600", rating: 4.9, reviews: 128, price: "2,800", level: "Top Rated", location: "Colombo", category: "Adventure", savedDate: "Apr 10, 2026" },
+                { id: "w2", serviceId: "gig-002", title: "Hidden Colombo Street Food Walk — Local Secrets Only", vendor: "Saman Silva", vendorImg: "/images/traveler2.png", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600", rating: 5.0, reviews: 47, price: "4,500", level: "Verified Pro", location: "Pettah, Colombo", category: "Culinary & Food", savedDate: "Apr 8, 2026" },
+                { id: "w3", serviceId: "gig-003", title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day", vendor: "Priya Fernando", vendorImg: "/images/traveler3.png", image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600", rating: 4.8, reviews: 214, price: "12,000", level: "Top Rated", location: "Sigiriya", category: "Nature & Wildlife", savedDate: "Apr 5, 2026" },
+            ];
+            setWishlist(mockData);
+            setLoading(false);
+        }, 0);
     }, []);
 
     const filtered = wishlist.filter((item) => {
