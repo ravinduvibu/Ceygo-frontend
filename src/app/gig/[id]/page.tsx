@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import {
     Star, Heart, MapPin, Clock, RefreshCw, CheckCircle2, Shield,
@@ -22,47 +22,61 @@ type GigPackage = {
     includes: string[];
 };
 
-type GigReview = {
-    id: string;
-    reviewer: string;
-    avatar: string;
-    rating: number;
-    comment: string;
-    date: string;
-};
-
-type Gig = {
+type ApiGig = {
     id: string;
     title: string;
-    vendor: string;
-    vendor_img: string;
-    image: string;
-    gallery: string[];
-    rating: number;
-    reviews_count: number;
-    price: string;
-    level: string;
-    category: string;
-    location: string;
-    vendor_since: string;
-    vendor_orders: number;
-    vendor_bio: string;
-    description: string;
-    highlights: string[];
-    packages: GigPackage[];
-    reviews: GigReview[];
+    description: string | null;
+    price: number;
+    category: string | null;
+    location: string | null;
+    image_url: string | null;
+    rating: number | null;
+    reviews_count: number | null;
+    orders_count: number | null;
+    created_at: string;
+    profiles: {
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+        created_at: string;
+    } | null;
 };
 
 // ── Order Modal ──────────────────────────────────────────────
-function OrderModal({ pkg, gigTitle, onClose }: {
+function OrderModal({ pkg, gigTitle, gigId, onClose }: {
     pkg: GigPackage;
     gigTitle: string;
+    gigId: string;
     onClose: () => void;
 }) {
     const [date, setDate] = useState("");
     const [guests, setGuests] = useState(1);
     const [note, setNote] = useState("");
+    const [submitting, setSubmitting] = useState(false);
     const [ordered, setOrdered] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleConfirm = async () => {
+        if (!date) return;
+        setSubmitting(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ gig_id: gigId, guests, booking_date: date, note }),
+            });
+            if (!res.ok) {
+                const body = await res.json();
+                throw new Error(body.error ?? "Failed to place order");
+            }
+            setOrdered(true);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Something went wrong");
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     if (ordered) {
         return (
@@ -71,9 +85,9 @@ function OrderModal({ pkg, gigTitle, onClose }: {
                     <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5">
                         <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 mb-2">Booking Confirmed!</h2>
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">Request Sent!</h2>
                     <p className="text-slate-500 text-sm leading-relaxed mb-1">
-                        Your <span className="font-bold text-slate-800">{pkg.name}</span> package has been booked.
+                        Your booking request has been sent to the partner.
                     </p>
                     <p className="text-slate-400 text-xs mb-6">Date: <span className="font-semibold text-slate-700">{date}</span> · {guests} guest{guests > 1 ? "s" : ""}</p>
                     <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-6 text-left">
@@ -85,6 +99,9 @@ function OrderModal({ pkg, gigTitle, onClose }: {
                             <span className="text-lg font-black text-slate-900">LKR {(pkg.price * guests).toLocaleString()}</span>
                         </div>
                     </div>
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 mb-4">
+                        Awaiting partner approval — you&apos;ll see the status in My Journeys.
+                    </p>
                     <Link href="/dashboard/My-Verified-Journeys" className="block w-full py-3 bg-[#ff6b35] text-white font-bold rounded-2xl text-sm hover:bg-[#e55a2b] transition-all mb-3" onClick={onClose}>
                         View My Journeys
                     </Link>
@@ -137,6 +154,9 @@ function OrderModal({ pkg, gigTitle, onClose }: {
                         <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Any dietary needs, accessibility requirements..."
                             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff6b35]/30 focus:border-[#ff6b35] resize-none" />
                     </div>
+                    {error && (
+                        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">{error}</p>
+                    )}
                     <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
                         <div>
                             <p className="text-xs text-slate-400">Total · {guests} guest{guests > 1 ? "s" : ""}</p>
@@ -147,10 +167,10 @@ function OrderModal({ pkg, gigTitle, onClose }: {
                             <span>Ceygo Protected</span>
                         </div>
                     </div>
-                    <button onClick={() => date && setOrdered(true)} disabled={!date}
+                    <button onClick={handleConfirm} disabled={!date || submitting}
                         className="w-full py-3.5 bg-[#ff6b35] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-black rounded-2xl text-sm hover:bg-[#e55a2b] transition-all shadow-sm shadow-orange-200 flex items-center justify-center space-x-2">
                         <ShoppingCart className="w-4 h-4" />
-                        <span>{date ? "Confirm Booking" : "Select a Date First"}</span>
+                        <span>{submitting ? "Sending request…" : date ? "Request Booking" : "Select a Date First"}</span>
                     </button>
                 </div>
             </div>
@@ -158,89 +178,32 @@ function OrderModal({ pkg, gigTitle, onClose }: {
     );
 }
 
-// ── Mock Gig Data ───────────────────────────────────────────
-const MOCK_GIGS: Record<string, Gig> = {
-    "gig-001": {
-        id: "gig-001", title: "Sunset TukTuk City Tour through the streets of Colombo",
-        vendor: "Nuwan Perera", vendor_img: "/images/traveler1.png",
-        image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=800",
-        gallery: [
-            "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=800",
-            "https://images.unsplash.com/photo-1587474260584-136574528ed5?q=80&w=800",
-            "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=800",
-        ],
-        rating: 4.9, reviews_count: 128, price: "2,800", level: "Top Rated",
-        category: "Transport", location: "Colombo", vendor_since: "2022", vendor_orders: 312,
-        vendor_bio: "Born and raised in Colombo, Nuwan has been sharing his city's hidden gems with travelers for over 5 years. Certified local guide with fluent English.",
-        description: "Hop aboard a classic TukTuk and explore the vibrant streets of Colombo as the sun sets. We'll cruise through the Pettah market bazaars, past colonial-era buildings, and end at the famous Galle Face Green for a stunning ocean sunset.",
-        highlights: ["Pettah Market visit", "Colonial architecture tour", "Galle Face sunset", "Local street food stops", "Air-conditioned TukTuk", "Flexible pickup"],
-        packages: [
-            { id: "p1", name: "Basic", price: 2800, description: "1-hour city highlights tour", delivery: "1 hour", revisions: 0, includes: ["TukTuk ride", "Route map", "Water bottle"] },
-            { id: "p2", name: "Standard", price: 4500, description: "2-hour extended tour with food stops", delivery: "2 hours", revisions: 1, includes: ["TukTuk ride", "2 street food stops", "Local guide narration", "Photo spots"] },
-            { id: "p3", name: "Premium", price: 7500, description: "3-hour private sunset tour + dinner", delivery: "3 hours", revisions: 2, includes: ["Private TukTuk", "Sunset dinner", "Custom route", "Airport drop", "Professional photos"] },
-        ],
-        reviews: [
-            { id: "r1", reviewer: "Sarah J.", avatar: "SJ", rating: 5, comment: "Absolutely incredible experience! Nuwan was knowledgeable, friendly, and took us to spots we'd never have found on our own.", date: "March 2026" },
-            { id: "r2", reviewer: "Marco R.", avatar: "MR", rating: 5, comment: "Best evening in Colombo by far. The street food stops were delicious and the sunset at Galle Face was magical.", date: "Feb 2026" },
-        ],
-    },
-    "gig-002": {
-        id: "gig-002", title: "Hidden Colombo Street Food Walk — Local Secrets Only",
-        vendor: "Saman Silva", vendor_img: "/images/traveler2.png",
-        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800",
-        gallery: [
-            "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800",
-            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800",
-        ],
-        rating: 5.0, reviews_count: 47, price: "4,500", level: "Verified Pro",
-        category: "Culinary & Food", location: "Pettah, Colombo", vendor_since: "2021", vendor_orders: 198,
-        vendor_bio: "Saman is a self-proclaimed 'food archaeologist' who has mapped every hidden eatery in Colombo's Pettah district. Featured in Lonely Planet Sri Lanka.",
-        description: "Join Saman on a 2.5-hour walk through the oldest food markets in Colombo. You'll taste hoppers, kottu roti, pol sambol, and fresh king coconut from vendors that have been here for generations.",
-        highlights: ["8+ tastings included", "Pettah market secrets", "Traditional recipe stories", "Vegetarian-friendly options", "Small group max 6", "Rain or shine"],
-        packages: [
-            { id: "p1", name: "Basic", price: 4500, description: "2.5-hour guided food walk", delivery: "2.5 hours", revisions: 0, includes: ["8 tastings", "Water", "Walking guide"] },
-            { id: "p2", name: "Standard", price: 6500, description: "Full experience with cooking demo", delivery: "4 hours", revisions: 0, includes: ["All Basic +", "Cooking demonstration", "Recipe booklet", "Market shopping"] },
-            { id: "p3", name: "Premium", price: 10000, description: "Private foodie day tour", delivery: "6 hours", revisions: 0, includes: ["Private group", "Lunch included", "Spice market visit", "Personalized route"] },
-        ],
-        reviews: [
-            { id: "r1", reviewer: "Elena V.", avatar: "EV", rating: 5, comment: "Saman is a treasure. We tasted things we'd never have found in a restaurant. Absolutely worth every rupee.", date: "April 2026" },
-        ],
-    },
-    "gig-003": {
-        id: "gig-003", title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day",
-        vendor: "Priya Fernando", vendor_img: "/images/traveler3.png",
-        image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=800",
-        gallery: ["https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=800"],
-        rating: 4.8, reviews_count: 214, price: "12,000", level: "Top Rated",
-        category: "Heritage Tours", location: "Sigiriya, Central Province", vendor_since: "2020", vendor_orders: 540,
-        vendor_bio: "Priya is a certified UNESCO heritage guide with a Masters in Sri Lankan archaeology. She brings the ancient kingdoms of Sri Lanka to life with vivid storytelling.",
-        description: "Ascend the iconic Sigiriya Rock — the 8th wonder of the ancient world — with a licensed heritage guide. Explore the royal gardens, the famous frescoes, and the ancient water systems that still function today.",
-        highlights: ["UNESCO World Heritage Site", "Licensed heritage guide", "Dambulla Cave Temple visit", "Village lunch included", "Air-conditioned transfer", "Hotel pickup"],
-        packages: [
-            { id: "p1", name: "Basic", price: 12000, description: "Sigiriya Rock guided climb", delivery: "4 hours", revisions: 0, includes: ["Entry tickets", "Guide", "Water"] },
-            { id: "p2", name: "Standard", price: 18000, description: "Sigiriya + Dambulla full day", delivery: "8 hours", revisions: 0, includes: ["All Basic +", "Dambulla visit", "Village lunch", "Hotel transfer"] },
-            { id: "p3", name: "Premium", price: 28000, description: "Private cultural immersion day", delivery: "10 hours", revisions: 0, includes: ["Private vehicle", "Sunrise climb", "Traditional dinner", "Photography session"] },
-        ],
-        reviews: [
-            { id: "r1", reviewer: "David M.", avatar: "DM", rating: 5, comment: "Priya's knowledge of the ancient kingdoms is unmatched. The most educational and entertaining day of our entire trip.", date: "March 2026" },
-            { id: "r2", reviewer: "Yuki T.", avatar: "YT", rating: 4, comment: "Great guide, the climb is challenging but totally worth it for the views. Bring good shoes!", date: "Jan 2026" },
-        ],
-    },
-};
 // ── Main Page ────────────────────────────────────────────────
 export default function GigPage() {
     const params = useParams();
     const gigId = params.id as string;
 
-    const gig: Gig | null = MOCK_GIGS[gigId] || null;
-    const loading = false;
-    const notFound = !gig;
+    const [gig, setGig] = useState<ApiGig | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
 
     const [selectedPkg, setSelectedPkg] = useState(0);
     const [activeImg, setActiveImg] = useState(0);
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [showOrder, setShowOrder] = useState(false);
 
+    useEffect(() => {
+        fetch(`/api/gigs/${gigId}`)
+            .then(r => {
+                if (!r.ok) { setNotFound(true); setLoading(false); return null; }
+                return r.json();
+            })
+            .then(data => {
+                if (data) setGig(data);
+                setLoading(false);
+            })
+            .catch(() => { setNotFound(true); setLoading(false); });
+    }, [gigId]);
 
     if (loading) {
         return (
@@ -264,11 +227,33 @@ export default function GigPage() {
         );
     }
 
-    const pkg = gig.packages[selectedPkg];
+    const vendorName = gig.profiles?.full_name ?? "Partner";
+    const vendorImg = gig.profiles?.avatar_url ?? null;
+    const vendorSince = gig.profiles?.created_at
+        ? new Date(gig.profiles.created_at).getFullYear().toString()
+        : "—";
+    const rating = gig.rating ?? 0;
+    const reviewsCount = gig.reviews_count ?? 0;
+    const ordersCount = gig.orders_count ?? 0;
+
+    const packages: GigPackage[] = [
+        {
+            id: "basic",
+            name: "Basic",
+            price: gig.price,
+            description: gig.description ?? "Standard booking",
+            delivery: "As scheduled",
+            revisions: 0,
+            includes: ["Service as described", "Direct contact with partner"],
+        },
+    ];
+
+    const pkg = packages[selectedPkg];
+    const gallery = gig.image_url ? [gig.image_url] : [];
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
-            {showOrder && pkg && <OrderModal pkg={pkg} gigTitle={gig.title} onClose={() => setShowOrder(false)} />}
+            {showOrder && pkg && <OrderModal pkg={pkg} gigTitle={gig.title} gigId={gig.id} onClose={() => setShowOrder(false)} />}
 
             <TravelerSidebar activePage="Dashboard" />
 
@@ -283,9 +268,9 @@ export default function GigPage() {
                     <div className="flex items-center space-x-1.5 text-xs text-slate-400">
                         <Link href="/dashboard" className="hover:text-[#ff6b35] transition-colors">Explore</Link>
                         <ChevronRight className="w-3 h-3" />
-                        <span className="text-slate-500 font-medium">{gig.category}</span>
+                        <span className="text-slate-500 font-medium">{gig.category ?? "Experience"}</span>
                         <ChevronRight className="w-3 h-3" />
-                        <span className="text-slate-700 font-semibold truncate max-w-xs">{gig.vendor}</span>
+                        <span className="text-slate-700 font-semibold truncate max-w-xs">{vendorName}</span>
                     </div>
                     <div className="ml-auto flex items-center space-x-2">
                         <button className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all">
@@ -303,23 +288,32 @@ export default function GigPage() {
                         {/* Title row */}
                         <div className="mb-6">
                             <div className="flex items-center space-x-2 mb-2">
-                                <span className="text-xs font-bold text-[#ff6b35] bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full">{gig.category}</span>
-                                {gig.level === "Top Rated" && <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full flex items-center space-x-1"><BadgeCheck className="w-3 h-3" /><span>Top Rated</span></span>}
-                                {gig.level === "Verified Pro" && <span className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full flex items-center space-x-1"><Shield className="w-3 h-3" /><span>Verified Pro</span></span>}
+                                {gig.category && (
+                                    <span className="text-xs font-bold text-[#ff6b35] bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full">{gig.category}</span>
+                                )}
+                                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full flex items-center space-x-1">
+                                    <BadgeCheck className="w-3 h-3" /><span>Verified</span>
+                                </span>
                             </div>
                             <h1 className="text-2xl font-black text-slate-900 leading-snug max-w-3xl">{gig.title}</h1>
                             <div className="flex items-center space-x-4 mt-3 flex-wrap gap-y-2">
-                                <div className="flex items-center space-x-1">
-                                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                    <span className="font-bold text-slate-900">{gig.rating}</span>
-                                    <span className="text-slate-400 text-sm">({gig.reviews_count} reviews)</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-sm text-slate-500">
-                                    <MapPin className="w-3.5 h-3.5 text-[#ff6b35]" /><span>{gig.location}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-sm text-slate-500">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /><span>{gig.vendor_orders} orders completed</span>
-                                </div>
+                                {rating > 0 && (
+                                    <div className="flex items-center space-x-1">
+                                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                                        <span className="font-bold text-slate-900">{rating.toFixed(1)}</span>
+                                        <span className="text-slate-400 text-sm">({reviewsCount} reviews)</span>
+                                    </div>
+                                )}
+                                {gig.location && (
+                                    <div className="flex items-center space-x-1 text-sm text-slate-500">
+                                        <MapPin className="w-3.5 h-3.5 text-[#ff6b35]" /><span>{gig.location}</span>
+                                    </div>
+                                )}
+                                {ordersCount > 0 && (
+                                    <div className="flex items-center space-x-1 text-sm text-slate-500">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /><span>{ordersCount} orders completed</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -327,49 +321,54 @@ export default function GigPage() {
                             {/* Left column */}
                             <div className="flex-1 min-w-0 space-y-8">
                                 {/* Gallery */}
-                                <div>
-                                    <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-                                        {gig.gallery?.[activeImg] && (
-                                            <Image src={gig.gallery[activeImg]} alt={gig.title} fill className="object-cover" />
-                                        )}
-                                        {activeImg > 0 && (
-                                            <button onClick={() => setActiveImg(activeImg - 1)} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-all shadow-sm">
-                                                <ChevronLeft className="w-4 h-4 text-slate-700" />
-                                            </button>
-                                        )}
-                                        {activeImg < (gig.gallery?.length ?? 0) - 1 && (
-                                            <button onClick={() => setActiveImg(activeImg + 1)} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-all shadow-sm">
-                                                <ChevronRight className="w-4 h-4 text-slate-700" />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {gig.gallery && gig.gallery.length > 1 && (
-                                        <div className="flex space-x-2 mt-3">
-                                            {gig.gallery.map((img, i) => (
-                                                <button key={i} onClick={() => setActiveImg(i)} className={`relative w-20 h-14 rounded-xl overflow-hidden border-2 transition-all ${activeImg === i ? "border-[#ff6b35]" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                                                    <Image src={img} alt="" fill className="object-cover" />
+                                {gallery.length > 0 && (
+                                    <div>
+                                        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                                            <Image src={gallery[activeImg]} alt={gig.title} fill className="object-cover" />
+                                            {activeImg > 0 && (
+                                                <button onClick={() => setActiveImg(activeImg - 1)} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-all shadow-sm">
+                                                    <ChevronLeft className="w-4 h-4 text-slate-700" />
                                                 </button>
-                                            ))}
+                                            )}
+                                            {activeImg < gallery.length - 1 && (
+                                                <button onClick={() => setActiveImg(activeImg + 1)} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-all shadow-sm">
+                                                    <ChevronRight className="w-4 h-4 text-slate-700" />
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+
+                                {gallery.length === 0 && (
+                                    <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                                        <span className="text-6xl">
+                                            {gig.category === "Transport" ? "🚗" : gig.category === "Food" || gig.category === "Culinary & Food" ? "🍛" : "✨"}
+                                        </span>
+                                    </div>
+                                )}
 
                                 {/* Vendor card */}
                                 <div className="flex items-start space-x-4 p-5 rounded-2xl border border-slate-200 bg-slate-50/50">
-                                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md flex-shrink-0">
-                                        {gig.vendor_img && <Image src={gig.vendor_img} alt={gig.vendor} fill className="object-cover" />}
+                                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-slate-200">
+                                        {vendorImg && <Image src={vendorImg} alt={vendorName} fill className="object-cover" />}
+                                        {!vendorImg && (
+                                            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-slate-500">
+                                                {vendorName[0]}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center space-x-2 mb-0.5">
-                                            <p className="font-bold text-slate-900">{gig.vendor}</p>
-                                            <span className="text-xs font-semibold text-[#ff6b35]">{gig.level}</span>
+                                            <p className="font-bold text-slate-900">{vendorName}</p>
+                                            <span className="text-xs font-semibold text-[#ff6b35]">Verified Partner</span>
                                         </div>
                                         <div className="flex items-center space-x-3 text-xs text-slate-400 mb-2">
-                                            <span className="flex items-center space-x-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-slate-600">{gig.rating}</span></span>
-                                            <span>{gig.vendor_orders} orders</span>
-                                            <span>Member since {gig.vendor_since}</span>
+                                            {rating > 0 && (
+                                                <span className="flex items-center space-x-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-slate-600">{rating.toFixed(1)}</span></span>
+                                            )}
+                                            {ordersCount > 0 && <span>{ordersCount} orders</span>}
+                                            <span>Member since {vendorSince}</span>
                                         </div>
-                                        <p className="text-sm text-slate-500 leading-relaxed">{gig.vendor_bio}</p>
                                     </div>
                                     <button className="flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-white hover:border-slate-300 transition-all flex-shrink-0">
                                         <MessageCircle className="w-4 h-4" /><span>Contact</span>
@@ -377,50 +376,12 @@ export default function GigPage() {
                                 </div>
 
                                 {/* Description */}
-                                <div>
-                                    <h2 className="text-lg font-black text-slate-900 mb-3">About This Experience</h2>
-                                    <p className="text-slate-600 leading-relaxed text-sm mb-5">{gig.description}</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {gig.highlights?.map(h => (
-                                            <div key={h} className="flex items-center space-x-2.5 text-sm text-slate-700">
-                                                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" /><span>{h}</span>
-                                            </div>
-                                        ))}
+                                {gig.description && (
+                                    <div>
+                                        <h2 className="text-lg font-black text-slate-900 mb-3">About This Experience</h2>
+                                        <p className="text-slate-600 leading-relaxed text-sm">{gig.description}</p>
                                     </div>
-                                </div>
-
-                                {/* Reviews */}
-                                <div>
-                                    <div className="flex items-center space-x-3 mb-5">
-                                        <h2 className="text-lg font-black text-slate-900">Reviews</h2>
-                                        <div className="flex items-center space-x-1 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
-                                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                            <span className="text-sm font-bold text-amber-700">{gig.rating}</span>
-                                            <span className="text-xs text-amber-600">({gig.reviews_count})</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {gig.reviews?.map(r => (
-                                            <div key={r.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-                                                <div className="flex items-center space-x-3 mb-3">
-                                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6b35]/20 to-[#0ea5e9]/20 flex items-center justify-center text-xs font-bold text-slate-700 border border-slate-200 flex-shrink-0">
-                                                        {r.avatar}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-800">{r.reviewer}</p>
-                                                        <div className="flex items-center space-x-1">
-                                                            {Array.from({ length: r.rating }).map((_, j) => (
-                                                                <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                                            ))}
-                                                            <span className="text-xs text-slate-400 ml-1">{r.date}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <p className="text-sm text-slate-600 leading-relaxed">{r.comment}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Report */}
                                 <div className="pb-8">
@@ -435,7 +396,7 @@ export default function GigPage() {
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
                                     {/* Package tabs */}
                                     <div className="flex border-b border-slate-100">
-                                        {gig.packages.map((p, i) => (
+                                        {packages.map((p, i) => (
                                             <button key={p.name} onClick={() => setSelectedPkg(i)}
                                                 className={`flex-1 py-3 text-xs font-bold transition-all ${selectedPkg === i ? "text-[#ff6b35] border-b-2 border-[#ff6b35] bg-orange-50/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>
                                                 {p.name}
@@ -463,7 +424,7 @@ export default function GigPage() {
                                                 )}
                                             </div>
                                             <div className="space-y-1.5">
-                                                {pkg.includes?.map(item => (
+                                                {pkg.includes.map(item => (
                                                     <div key={item} className="flex items-center space-x-2 text-xs text-slate-700">
                                                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" /><span>{item}</span>
                                                     </div>
@@ -475,8 +436,7 @@ export default function GigPage() {
                                                 <ShoppingCart className="w-4 h-4" />
                                                 <span>Order Now · LKR {pkg.price.toLocaleString()}</span>
                                             </button>
-                                            <button onClick={() => setShowOrder(true)}
-                                                className="w-full py-3 border-2 border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:border-[#ff6b35]/40 hover:text-[#ff6b35] transition-all flex items-center justify-center space-x-2">
+                                            <button className="w-full py-3 border-2 border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:border-[#ff6b35]/40 hover:text-[#ff6b35] transition-all flex items-center justify-center space-x-2">
                                                 <MessageCircle className="w-4 h-4" /><span>Contact Artisan</span>
                                             </button>
                                             <div className="flex items-start space-x-2 text-xs text-slate-400 bg-slate-50 rounded-xl p-3 border border-slate-100">
@@ -490,9 +450,9 @@ export default function GigPage() {
                                 {/* Quick stats */}
                                 <div className="mt-4 grid grid-cols-3 gap-2">
                                     {[
-                                        { label: "Rating", value: `${gig.rating}★`, color: "text-amber-600" },
-                                        { label: "Orders", value: `${gig.vendor_orders}+`, color: "text-[#ff6b35]" },
-                                        { label: "Since", value: gig.vendor_since, color: "text-blue-600" },
+                                        { label: "Rating", value: rating > 0 ? `${rating.toFixed(1)}★` : "New", color: "text-amber-600" },
+                                        { label: "Orders", value: ordersCount > 0 ? `${ordersCount}+` : "—", color: "text-[#ff6b35]" },
+                                        { label: "Since", value: vendorSince, color: "text-blue-600" },
                                     ].map(({ label, value, color }) => (
                                         <div key={label} className="bg-white border border-slate-200 rounded-xl p-3 text-center shadow-sm">
                                             <p className={`text-base font-black ${color}`}>{value}</p>

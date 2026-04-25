@@ -8,10 +8,13 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from("orders")
-        .select("id, status, amount, notes, created_at, gigs(id, title, image_url), profiles!traveler_id(id, full_name)")
-        .eq("partner_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
+        .select(`
+            id, status, amount, notes, created_at,
+            gigs ( id, title, image_url, category, location ),
+            profiles!partner_id ( id, full_name )
+        `)
+        .eq("traveler_id", user.id)
+        .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data ?? []);
