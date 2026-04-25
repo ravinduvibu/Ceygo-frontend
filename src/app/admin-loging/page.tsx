@@ -17,14 +17,12 @@ export default function AdminLogin() {
         setError(null);
 
         // ── Mock Admin Auth ───────────────────────────────
-        // Hardcoded credentials for frontend-only mode.
-        // Replace with real auth when backend is ready.
         setTimeout(() => {
-            if (email === "admin@ceygo.com" && password === "admin123") {
+            if (email === "admin@gmail.com" && password === "admin12345678") {
                 document.cookie = "auth=true; path=/";
                 window.location.href = "/admin";
             } else {
-                setError("Invalid credentials. Use admin@ceygo.com / admin123");
+                setError("Invalid admin credentials. Use admin@gmail.com / admin12345678");
             }
             setIsLoading(false);
         }, 600);
@@ -75,7 +73,7 @@ export default function AdminLogin() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4.5 pl-12 pr-4 text-slate-900 font-bold placeholder:text-slate-400 focus:bg-white focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all outline-none"
-                                        placeholder="admin@ceygo.com"
+                                        placeholder="admin@gmail.com"
                                     />
                                 </div>
                             </div>
