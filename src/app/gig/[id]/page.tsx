@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import {
     Star, Heart, MapPin, Clock, RefreshCw, CheckCircle2, Shield,
@@ -10,7 +10,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import TravelerSidebar from "@/components/TravelerSidebar";
-import { supabase } from "@/lib/supabaseClient";
 
 // ── Types ────────────────────────────────────────────────────
 type GigPackage = {
@@ -159,51 +158,92 @@ function OrderModal({ pkg, gigTitle, onClose }: {
     );
 }
 
+// ── Mock Gig Data ───────────────────────────────────────────
+const MOCK_GIGS: Record<string, Gig> = {
+    "gig-001": {
+        id: "gig-001", title: "Sunset TukTuk City Tour through the streets of Colombo",
+        vendor: "Nuwan Perera", vendor_img: "/images/traveler1.png",
+        image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=800",
+        gallery: [
+            "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=800",
+            "https://images.unsplash.com/photo-1587474260584-136574528ed5?q=80&w=800",
+            "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=800",
+        ],
+        rating: 4.9, reviews_count: 128, price: "2,800", level: "Top Rated",
+        category: "Transport", location: "Colombo", vendor_since: "2022", vendor_orders: 312,
+        vendor_bio: "Born and raised in Colombo, Nuwan has been sharing his city's hidden gems with travelers for over 5 years. Certified local guide with fluent English.",
+        description: "Hop aboard a classic TukTuk and explore the vibrant streets of Colombo as the sun sets. We'll cruise through the Pettah market bazaars, past colonial-era buildings, and end at the famous Galle Face Green for a stunning ocean sunset.",
+        highlights: ["Pettah Market visit", "Colonial architecture tour", "Galle Face sunset", "Local street food stops", "Air-conditioned TukTuk", "Flexible pickup"],
+        packages: [
+            { id: "p1", name: "Basic", price: 2800, description: "1-hour city highlights tour", delivery: "1 hour", revisions: 0, includes: ["TukTuk ride", "Route map", "Water bottle"] },
+            { id: "p2", name: "Standard", price: 4500, description: "2-hour extended tour with food stops", delivery: "2 hours", revisions: 1, includes: ["TukTuk ride", "2 street food stops", "Local guide narration", "Photo spots"] },
+            { id: "p3", name: "Premium", price: 7500, description: "3-hour private sunset tour + dinner", delivery: "3 hours", revisions: 2, includes: ["Private TukTuk", "Sunset dinner", "Custom route", "Airport drop", "Professional photos"] },
+        ],
+        reviews: [
+            { id: "r1", reviewer: "Sarah J.", avatar: "SJ", rating: 5, comment: "Absolutely incredible experience! Nuwan was knowledgeable, friendly, and took us to spots we'd never have found on our own.", date: "March 2026" },
+            { id: "r2", reviewer: "Marco R.", avatar: "MR", rating: 5, comment: "Best evening in Colombo by far. The street food stops were delicious and the sunset at Galle Face was magical.", date: "Feb 2026" },
+        ],
+    },
+    "gig-002": {
+        id: "gig-002", title: "Hidden Colombo Street Food Walk — Local Secrets Only",
+        vendor: "Saman Silva", vendor_img: "/images/traveler2.png",
+        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800",
+        gallery: [
+            "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800",
+            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800",
+        ],
+        rating: 5.0, reviews_count: 47, price: "4,500", level: "Verified Pro",
+        category: "Culinary & Food", location: "Pettah, Colombo", vendor_since: "2021", vendor_orders: 198,
+        vendor_bio: "Saman is a self-proclaimed 'food archaeologist' who has mapped every hidden eatery in Colombo's Pettah district. Featured in Lonely Planet Sri Lanka.",
+        description: "Join Saman on a 2.5-hour walk through the oldest food markets in Colombo. You'll taste hoppers, kottu roti, pol sambol, and fresh king coconut from vendors that have been here for generations.",
+        highlights: ["8+ tastings included", "Pettah market secrets", "Traditional recipe stories", "Vegetarian-friendly options", "Small group max 6", "Rain or shine"],
+        packages: [
+            { id: "p1", name: "Basic", price: 4500, description: "2.5-hour guided food walk", delivery: "2.5 hours", revisions: 0, includes: ["8 tastings", "Water", "Walking guide"] },
+            { id: "p2", name: "Standard", price: 6500, description: "Full experience with cooking demo", delivery: "4 hours", revisions: 0, includes: ["All Basic +", "Cooking demonstration", "Recipe booklet", "Market shopping"] },
+            { id: "p3", name: "Premium", price: 10000, description: "Private foodie day tour", delivery: "6 hours", revisions: 0, includes: ["Private group", "Lunch included", "Spice market visit", "Personalized route"] },
+        ],
+        reviews: [
+            { id: "r1", reviewer: "Elena V.", avatar: "EV", rating: 5, comment: "Saman is a treasure. We tasted things we'd never have found in a restaurant. Absolutely worth every rupee.", date: "April 2026" },
+        ],
+    },
+    "gig-003": {
+        id: "gig-003", title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day",
+        vendor: "Priya Fernando", vendor_img: "/images/traveler3.png",
+        image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=800",
+        gallery: ["https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=800"],
+        rating: 4.8, reviews_count: 214, price: "12,000", level: "Top Rated",
+        category: "Heritage Tours", location: "Sigiriya, Central Province", vendor_since: "2020", vendor_orders: 540,
+        vendor_bio: "Priya is a certified UNESCO heritage guide with a Masters in Sri Lankan archaeology. She brings the ancient kingdoms of Sri Lanka to life with vivid storytelling.",
+        description: "Ascend the iconic Sigiriya Rock — the 8th wonder of the ancient world — with a licensed heritage guide. Explore the royal gardens, the famous frescoes, and the ancient water systems that still function today.",
+        highlights: ["UNESCO World Heritage Site", "Licensed heritage guide", "Dambulla Cave Temple visit", "Village lunch included", "Air-conditioned transfer", "Hotel pickup"],
+        packages: [
+            { id: "p1", name: "Basic", price: 12000, description: "Sigiriya Rock guided climb", delivery: "4 hours", revisions: 0, includes: ["Entry tickets", "Guide", "Water"] },
+            { id: "p2", name: "Standard", price: 18000, description: "Sigiriya + Dambulla full day", delivery: "8 hours", revisions: 0, includes: ["All Basic +", "Dambulla visit", "Village lunch", "Hotel transfer"] },
+            { id: "p3", name: "Premium", price: 28000, description: "Private cultural immersion day", delivery: "10 hours", revisions: 0, includes: ["Private vehicle", "Sunrise climb", "Traditional dinner", "Photography session"] },
+        ],
+        reviews: [
+            { id: "r1", reviewer: "David M.", avatar: "DM", rating: 5, comment: "Priya's knowledge of the ancient kingdoms is unmatched. The most educational and entertaining day of our entire trip.", date: "March 2026" },
+            { id: "r2", reviewer: "Yuki T.", avatar: "YT", rating: 4, comment: "Great guide, the climb is challenging but totally worth it for the views. Bring good shoes!", date: "Jan 2026" },
+        ],
+    },
+};
+// Fallback for IDs not in the map
+const FALLBACK_GIG: Gig = MOCK_GIGS["gig-001"];
+
 // ── Main Page ────────────────────────────────────────────────
 export default function GigPage() {
     const params = useParams();
     const gigId = params.id as string;
 
-    const [gig, setGig] = useState<Gig | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notFound, setNotFound] = useState(false);
+    const gig: Gig | null = MOCK_GIGS[gigId] || null;
+    const loading = false;
+    const notFound = !gig;
 
     const [selectedPkg, setSelectedPkg] = useState(0);
     const [activeImg, setActiveImg] = useState(0);
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [showOrder, setShowOrder] = useState(false);
 
-    // Fetch gig + packages + reviews from Supabase
-    useEffect(() => {
-        if (!gigId) return;
-        const fetchGig = async () => {
-            setLoading(true);
-
-            const { data: gigData, error: gigErr } = await supabase
-                .from("gigs")
-                .select("*")
-                .eq("id", gigId)
-                .single();
-
-            if (gigErr || !gigData) { setNotFound(true); setLoading(false); return; }
-
-            const { data: pkgs } = await supabase
-                .from("gig_packages")
-                .select("*")
-                .eq("gig_id", gigId)
-                .order("price", { ascending: true });
-
-            const { data: revs } = await supabase
-                .from("gig_reviews")
-                .select("*")
-                .eq("gig_id", gigId)
-                .order("created_at", { ascending: false });
-
-            setGig({ ...gigData, packages: pkgs || [], reviews: revs || [] });
-            setLoading(false);
-        };
-        fetchGig();
-    }, [gigId]);
 
     if (loading) {
         return (

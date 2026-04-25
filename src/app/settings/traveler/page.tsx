@@ -22,7 +22,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import TravelerSidebar from "@/components/TravelerSidebar";
 
 // Note: navItems is now managed inside TravelerSidebar.
@@ -47,32 +46,12 @@ export default function TravelerSettings() {
     const router = useRouter();
 
     useEffect(() => {
-        async function loadProfile() {
-            setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                router.push('/signin');
-                return;
-            }
-
-            setUserId(session.user.id);
-            setEmail(session.user.email || "");
-            
-            const { data, error } = await supabase
-                .from('users')
-                .select('full_name, bio, avatar_base64')
-                .eq('id', session.user.id)
-                .single();
-                
-            if (data) {
-                setFullName(data.full_name || "");
-                setBio(data.bio || "");
-                setAvatar(data.avatar_base64 || "");
-            }
-            setLoading(false);
-        }
-        
-        loadProfile();
+        // ── Mock Profile Load ────────────────────────────────
+        setUserId("mock-user-001");
+        setEmail("alex.johnson@example.com");
+        setFullName("Alex Johnson");
+        setBio("Passionate traveler exploring the hidden gems of Sri Lanka. Love authentic local experiences and meeting new people.");
+        setLoading(false);
     }, [router]);
 
     // Handle Image Upload and Compression
@@ -128,57 +107,12 @@ export default function TravelerSettings() {
         setErrorMsg("");
         setSuccessMsg("");
 
-        try {
-            // Get fresh session directly - don't rely on userId state timing
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setErrorMsg("You are not logged in. Please sign in again.");
-                return;
-            }
-
-            const liveUserId = session.user.id;
-            console.log("Saving for user:", liveUserId);
-            console.log("Payload:", { full_name: fullName, bio, avatar_base64: avatar ? "HAS_AVATAR" : "NO_AVATAR" });
-
-            // 1. Update Public Profile Table
-            const { data: updateData, error: dbError, count } = await supabase
-                .from('users')
-                .update({ 
-                    full_name: fullName, 
-                    bio: bio,
-                    avatar_base64: avatar
-                })
-                .eq('id', liveUserId)
-                .select(); // .select() forces Supabase to return the updated row
-
-            console.log("Update result:", { updateData, dbError, count });
-
-            if (dbError) throw dbError;
-
-            if (!updateData || updateData.length === 0) {
-                throw new Error("Update matched 0 rows. Your user row may be missing from public.users.");
-            }
-
-            // 2. Optional: Update Auth Email if changed
-            const { data: { user } } = await supabase.auth.getUser();
-            let emailNotice = "";
-            if (user && user.email !== email) {
-                const { error: authError } = await supabase.auth.updateUser({ email });
-                if (authError) throw authError;
-                emailNotice = " Check your inbox to confirm your new email!";
-            }
-
-            setSuccessMsg(`Profile saved successfully!${emailNotice}`);
-            setTimeout(() => setSuccessMsg(""), 5000);
-
-        } catch (error: any) {
-            console.error("SUPABASE SAVE ERROR:", error);
-            alert("Save failed: " + (error.message || JSON.stringify(error)));
-            setErrorMsg(error.message || "Failed to save profile.");
-            setTimeout(() => setErrorMsg(""), 6000);
-        } finally {
-            setSaving(false);
-        }
+        // ── Mock Save ──────────────────────────────────
+        // Simulates a successful profile save without hitting any backend.
+        await new Promise(r => setTimeout(r, 600));
+        setSuccessMsg("Profile saved successfully!");
+        setTimeout(() => setSuccessMsg(""), 5000);
+        setSaving(false);
     };
 
 

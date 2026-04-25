@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+
 import {
     LayoutDashboard,
     Bookmark,
@@ -63,46 +63,13 @@ export default function TravelerSidebar({ activePage, wishlistCount = 0 }: Sideb
         clearNavLabel(activePage);
         setClearedLabels(getClearedLabels());
 
-        async function loadProfile() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                const { data } = await supabase
-                    .from('users')
-                    .select('full_name, avatar_base64')
-                    .eq('id', session.user.id)
-                    .single();
-                    
-                if (data) {
-                    setFullName(data.full_name || "");
-                    setAvatar(data.avatar_base64 || "");
-                }
-
-                // Fetch Unread Messages Count
-                const { count: msgCount } = await supabase
-                    .from('messages')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('receiver_id', session.user.id)
-                    .eq('is_read', false);
-                setUnreadMessages(msgCount || 0);
-
-                // Fetch Active Journeys Count
-                const { count: orderCount } = await supabase
-                    .from('orders')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('traveler_id', session.user.id)
-                    .in('status', ['Pending', 'Confirmed']);
-                setActiveJourneys(orderCount || 0);
-
-                // Fetch Wishlist Items Count
-                const { count: wishCount } = await supabase
-                    .from('wishlists')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('traveler_id', session.user.id);
-                setWishlistItems(wishCount || 0);
-            }
-            setLoading(false);
-        }
-        loadProfile();
+        // ── Mock User & Counts ──────────────────────────────
+        setFullName("Alex Johnson");
+        setAvatar("");
+        setUnreadMessages(2);
+        setActiveJourneys(1);
+        setWishlistItems(3);
+        setLoading(false);
     }, [activePage]);
 
     const clearAllNavLabels = () => {
@@ -179,9 +146,8 @@ export default function TravelerSidebar({ activePage, wishlistCount = 0 }: Sideb
                         <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                     </div>
                     <button 
-                        onClick={async () => { 
-                            await supabase.auth.signOut();
-                            document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
+                        onClick={() => { 
+                            document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                             router.push('/');
                         }}
                         className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"

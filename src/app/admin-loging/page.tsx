@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, Lock, User, Loader2, ArrowRight } from "lucide-react";
 
@@ -12,93 +11,21 @@ export default function AdminLogin() {
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
     
-    // Redirect if already logged in as admin
-    useEffect(() => {
-        const checkExistingSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("role")
-                    .eq("id", session.user.id)
-                    .single();
-                
-                if (profile?.role === "admin") {
-                    // Sync cookie before redirect to satisfy middleware
-                    document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in}; SameSite=Lax;`;
-                    window.location.href = "/admin";
-                }
-            }
-        };
-        checkExistingSession();
-    }, []);
-
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
 
-        try {
-            console.log("[Auth] Attempting login for:", email);
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (authError) {
-                console.error("[Auth] Login error:", authError.message);
-                throw authError;
+        // ── Mock Admin Auth ───────────────────────────────
+        setTimeout(() => {
+            if (email === "admin@gmail.com" && password === "admin12345678") {
+                document.cookie = "auth=true; path=/";
+                window.location.href = "/admin";
+            } else {
+                setError("Invalid admin credentials. Use admin@gmail.com / admin12345678");
             }
-
-            // --- COOKIE SYNC FIX ---
-            // We manually set a cookie so the Middleware can see the session
-            if (authData.session) {
-                document.cookie = `sb-access-token=${authData.session.access_token}; path=/; max-age=${authData.session.expires_in}; SameSite=Lax;`;
-            }
-            // -----------------------
-
-            const { data: profile, error: profileError } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", authData.user.id)
-                .single();
-
-            if (profileError || profile?.role !== "admin") {
-                console.warn("[Auth] Role mismatch. Profile:", profile, "Error:", profileError);
-                await supabase.auth.signOut();
-                // Clear cookie on failure
-                document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                throw new Error("Access Denied: Your account role is not 'admin'. Please run the SQL UPDATE command.");
-            }
-
-            // Use window.location.href for absolute sync with middleware
-            window.location.href = "/admin";
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleDevSetup = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            // Force create the account
-            const { data, error } = await supabase.auth.signUp({
-                email: "admin@gmail.com",
-                password: "admin12345678",
-                options: { data: { role: 'admin' } }
-            });
-            
-            if (error) throw error;
-            
-            alert("✅ Admin account CREATED! Now try logging in. (Don't forget to run the SQL UPDATE command if login still shows 'Access Denied')");
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
+        }, 600);
     };
 
     return (
@@ -146,7 +73,7 @@ export default function AdminLogin() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4.5 pl-12 pr-4 text-slate-900 font-bold placeholder:text-slate-400 focus:bg-white focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all outline-none"
-                                        placeholder="admin@ceygo.com"
+                                        placeholder="admin@gmail.com"
                                     />
                                 </div>
                             </div>
@@ -187,13 +114,6 @@ export default function AdminLogin() {
                         </button>
                     </form>
 
-                    {/* Developer Shortcut (Temporary) */}
-                    <button 
-                        onClick={handleDevSetup}
-                        className="mt-6 w-full text-[10px] font-black text-slate-400 uppercase tracking-[2px] hover:text-orange-500 transition-colors"
-                    >
-                        First Time? Click to setup Admin 
-                    </button>
                 </div>
 
                 {/* Footer link */}

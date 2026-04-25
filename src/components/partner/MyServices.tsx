@@ -4,7 +4,7 @@ import Image from "next/image";
 import CreateServiceModal from "./CreateServiceModal";
 import EditServiceModal from "./EditServiceModal";
 import { Gig } from "@/types/gig";
-import { supabase } from "@/lib/supabaseClient";
+
 
 type Toast = { id: number; message: string; type: "pause" | "resume" | "delete" | "success" | "error" };
 
@@ -17,64 +17,19 @@ export default function MyServices() {
     const [editingService, setEditingService] = useState<Gig | null>(null);
     const [toasts, setToasts] = useState<Toast[]>([]);
 
-    // 1. Get the current user session
+    // ── Mock Data ────────────────────────────────────────
+    const mockPartnerId = "mock-partner-001";
+
     useEffect(() => {
-        const getPartner = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                console.log("[Auth] Active Partner Found:", user.id);
-                setPartnerId(user.id);
-            } else {
-                console.warn("[Auth] No Active Partner Found. Gigs will be hidden.");
-                setPartnerId(null);
-                setIsLoading(false);
-            }
-        };
-        getPartner();
+        setPartnerId(mockPartnerId);
+        const mockServices: Gig[] = [
+            { id: "svc-001", title: "I will take you on a Sunset TukTuk City Tour", image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600", status: "Active", impressions: "1.2k", clicks: "340", orders: 2, cancellations: "0%", price: "LKR 2,800", rating: 4.9, reviews: 128, location: "Colombo", category: "Transport", description: "Classic TukTuk sunset tour.", is_active: true },
+            { id: "svc-002", title: "I will show you hidden Colombo Street Food gems", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600", status: "Active", impressions: "980", clicks: "210", orders: 0, cancellations: "0%", price: "LKR 4,500", rating: 5.0, reviews: 47, location: "Pettah", category: "Food", description: "Authentic street food walk.", is_active: true },
+            { id: "svc-003", title: "I will drive you to Ella safely (one-way private)", image: "https://images.unsplash.com/photo-1565967511849-76a60a516170?q=80&w=600", status: "Paused", impressions: "420", clicks: "88", orders: 1, cancellations: "0%", price: "LKR 15,000", rating: 4.9, reviews: 8, location: "Ella", category: "Transport", description: "Safe private transfer to Ella.", is_active: false },
+        ];
+        setServices(mockServices);
+        setIsLoading(false);
     }, []);
-
-    // 2. Fetch gigs once we have the partnerId
-    useEffect(() => {
-        if (!partnerId) {
-            setServices([]); // Clear any previous services if user changed
-            return;
-        }
-
-        const fetchGigs = async () => {
-            try {
-                console.log(`[Dashboard] Fetching gigs for: ${partnerId}`);
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/gigs?partner_id=${partnerId}`
-                );
-                if (!res.ok) throw new Error("Failed to fetch gigs");
-                const json = await res.json();
-
-                // Map DB rows → display format
-                const mapped: Gig[] = (json.data || []).map((g: any) => ({
-                    ...g,
-                    id: g.id,
-                    title: g.title,
-                    image: g.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=600&auto=format&fit=crop",
-                    status: g.is_active ? "Active" : "Paused",
-                    impressions: "—",
-                    clicks: "—",
-                    orders: 0,
-                    cancellations: "—",
-                    price: g.price ? (g.price.startsWith("LKR") ? g.price : `LKR ${g.price}`) : "LKR 0",
-                    rating: g.rating ?? 0,
-                    reviews: g.reviews_count ?? 0,
-                }));
-
-                setServices(mapped);
-            } catch (err) {
-                console.error("Could not load gigs:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchGigs();
-    }, [partnerId]);
 
     const showToast = (message: string, type: Toast["type"]) => {
         const id = Date.now();
@@ -82,55 +37,22 @@ export default function MyServices() {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
     };
 
-    const deleteService = async (id: string | number) => {
-        if (!window.confirm("Are you sure you want to delete this service? This action cannot be undone.")) {
-            return;
-        }
-
-        try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/gigs/${id}`, {
-                method: 'DELETE',
-            });
-            if (!res.ok) throw new Error("Failed to delete service");
-            
-            setServices(prev => prev.filter(s => s.id !== id));
-            showToast("Service deleted successfully.", "delete");
-        } catch (err: any) {
-            console.error("Delete error:", err);
-            alert(`Failed to delete service: ${err.message}`);
-        }
+    const deleteService = (id: string | number) => {
+        if (!window.confirm("Are you sure you want to delete this service? This action cannot be undone.")) return;
+        setServices(prev => prev.filter(s => s.id !== id));
+        showToast("Service deleted successfully.", "delete");
     };
 
-    const toggleServiceStatus = async (id: string | number) => {
+    const toggleServiceStatus = (id: string | number) => {
         const service = services.find(s => s.id === id);
         if (!service) return;
-
         const nextIsActive = service.status !== "Active";
         const nextStatus = nextIsActive ? "Active" : "Paused";
-
-        try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/gigs/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_active: nextIsActive })
-            });
-            if (!res.ok) throw new Error("Failed to update status");
-
-            setServices(prev => prev.map(s => {
-                if (s.id === id) {
-                    return { ...s, status: nextStatus, is_active: nextIsActive };
-                }
-                return s;
-            }));
-
-            showToast(
-                nextStatus === "Paused" ? "Service paused successfully." : "Service is now live!",
-                nextStatus === "Paused" ? "pause" : "resume"
-            );
-        } catch (err: any) {
-            console.error("Status toggle error:", err);
-            alert(`Failed to update status: ${err.message}`);
-        }
+        setServices(prev => prev.map(s => s.id === id ? { ...s, status: nextStatus, is_active: nextIsActive } : s));
+        showToast(
+            nextStatus === "Paused" ? "Service paused successfully." : "Service is now live!",
+            nextStatus === "Paused" ? "pause" : "resume"
+        );
     };
 
     const handleAddService = (newSvc: any) => {

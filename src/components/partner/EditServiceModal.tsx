@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UploadCloud, MapPin, DollarSign, CheckCircle2, Loader2, Image as ImageIcon } from "lucide-react";
 import { Gig } from "@/types/gig";
-import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 
 interface EditServiceModalProps {
@@ -52,79 +51,32 @@ export default function EditServiceModal({ service, isOpen, onClose, onSave, onN
         }
     };
 
-    const uploadImage = async (file: File) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { data, error } = await supabase.storage
-            .from('Gig Images')
-            .upload(filePath, file);
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('Gig Images')
-            .getPublicUrl(filePath);
-
-        return publicUrl;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        try {
-            let currentImageUrl = service.image;
+        // ── Mock Update ─────────────────────────────────
+        await new Promise(r => setTimeout(r, 500));
 
-            // 1. Upload new image if selected
-            if (imageFile) {
-                try {
-                    currentImageUrl = await uploadImage(imageFile);
-                } catch (err: any) {
-                    console.error("Storage upload error:", err);
-                    onNotify("Failed to upload image. Please ensure the 'Gig Images' bucket exists and is public.", "error");
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
+        const formattedPrice = price
+            ? `LKR ${Number(price.replace(/,/g, "")).toLocaleString()}`
+            : service!.price;
 
-            const formattedPrice = price
-                ? `LKR ${Number(price.replace(/,/g, "")).toLocaleString()}`
-                : service.price;
+        onSave({
+            ...service!,
+            title,
+            price: formattedPrice,
+            category,
+            location,
+            image: imagePreview || service!.image,
+        });
 
-            const updateData = {
-                title,
-                price: formattedPrice,
-                category,
-                location,
-                image: currentImageUrl
-            };
-
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/gigs/${service.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updateData)
-            });
-
-            if (!res.ok) throw new Error("Failed to update gig");
-
-            onSave({
-                ...service,
-                ...updateData
-            });
-
-            setSaved(true);
-            setTimeout(() => {
-                setSaved(false);
-                onClose();
-            }, 1000);
-        } catch (err: any) {
-            console.error("Update error:", err);
-            onNotify(`Failed to update service: ${err.message}`, "error");
-        } finally {
-            setIsSubmitting(false);
-        }
+        setSaved(true);
+        setTimeout(() => {
+            setSaved(false);
+            onClose();
+        }, 1000);
+        setIsSubmitting(false);
     };
 
     return (

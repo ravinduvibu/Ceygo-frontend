@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { X, UploadCloud, MapPin, DollarSign, Image as ImageIcon, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 import { Gig } from "@/types/gig";
 
@@ -37,111 +36,45 @@ export default function CreateServiceModal({ isOpen, onClose, onAddService, onNo
         }
     };
 
-    const uploadImage = async (file: File) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { data, error } = await supabase.storage
-            .from('Gig Images')
-            .upload(filePath, file);
-
-        if (error) {
-            throw error;
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('Gig Images')
-            .getPublicUrl(filePath);
-
-        return publicUrl;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        try {
-            let imageUrl = "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=600&auto=format&fit=crop";
-            
-            // 1. Upload image if selected
-            if (imageFile) {
-                try {
-                    imageUrl = await uploadImage(imageFile);
-                } catch (err: any) {
-                    console.error("Storage upload error:", err);
-                    onNotify("Failed to upload image. Please ensure the 'Gig Images' bucket exists and is public.", "error");
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
 
-            // 2. Call backend to save gig
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/add-gig`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    title,
-                    price,
-                    description,
-                    category,
-                    location,
-                    image: imageUrl,
-                    partner_id: partnerId
-                }),
-            });
+        // ── Mock Submit ─────────────────────────────────
+        // Simulates gig creation without any backend call.
+        await new Promise(r => setTimeout(r, 600));
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Failed to create gig');
-            }
+        const imageUrl = imagePreview || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=600&auto=format&fit=crop";
 
-            const result = await response.json();
-            const realId = result.data?.[0]?.id;
-            
-            console.log("[Gig Creation] Received Real ID from Supabase:", realId);
-            
-            if (!realId) {
-                console.warn("[Gig Creation] WARNING: No ID returned from backend. Deletion might fail after this.");
-            }
+        const newService: Gig = {
+            id: `svc-${Date.now()}`,
+            title,
+            image: imageUrl,
+            status: "Active",
+            impressions: "0",
+            clicks: "0",
+            orders: 0,
+            cancellations: "0%",
+            price: price.startsWith("LKR") ? price : `LKR ${price}`,
+            rating: 0,
+            reviews: 0,
+            location,
+            category,
+            description,
+            is_active: true,
+        };
 
-            const newService = {
-                id: realId || Date.now().toString(), // fallback if somehow empty
-                title: title,
-                image: imageUrl,
-                status: "Active",
-                impressions: "0",
-                clicks: "0",
-                orders: 0,
-                cancellations: "0%",
-                price: price.startsWith("LKR") ? price : `LKR ${price}`,
-                rating: 0,
-                reviews: 0,
-                location: location,
-                category: category,
-                description: description,
-                is_active: true
-            };
-            
-            onAddService(newService);
-            
-            // Reset form
-            setTitle("");
-            setPrice("");
-            setLocation("");
-            setDescription("");
-            setImageFile(null);
-            setImagePreview(null);
-            onClose();
-        } catch (error: any) {
-            console.error("Error creating gig:", error);
-            onNotify(`Failed to create gig: ${error.message}`, "error");
-        } finally {
-            setIsSubmitting(false);
-        }
+        onAddService(newService);
+
+        // Reset form
+        setTitle("");
+        setPrice("");
+        setLocation("");
+        setDescription("");
+        setImageFile(null);
+        setImagePreview(null);
+        setIsSubmitting(false);
+        onClose();
     };
 
     return (

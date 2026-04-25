@@ -2,59 +2,127 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, Filter, Heart, BadgeCheck, Star } from "lucide-react";
 import TravelerSidebar from "@/components/TravelerSidebar";
-import { supabase } from "@/lib/supabaseClient";
 
-type Gig = {
-    id: string;
-    title: string;
-    vendor: string;
-    vendor_img: string;
-    image: string;
-    rating: number;
-    reviews_count: number;
-    price: string;
-    level: string;
-    category: string;
-};
+// ── Mock Data ────────────────────────────────────────────────
+const MOCK_GIGS = [
+    {
+        id: "gig-001",
+        title: "Sunset TukTuk City Tour through the streets of Colombo",
+        vendor: "Nuwan Perera",
+        vendor_img: "/images/traveler1.png",
+        image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600&auto=format&fit=crop",
+        rating: 4.9,
+        reviews_count: 128,
+        price: "2,800",
+        level: "Top Rated",
+        category: "Transport",
+    },
+    {
+        id: "gig-002",
+        title: "Hidden Colombo Street Food Walk — Local Secrets Only",
+        vendor: "Saman Silva",
+        vendor_img: "/images/traveler2.png",
+        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600&auto=format&fit=crop",
+        rating: 5.0,
+        reviews_count: 47,
+        price: "4,500",
+        level: "Verified Pro",
+        category: "Culinary & Food",
+    },
+    {
+        id: "gig-003",
+        title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day",
+        vendor: "Priya Fernando",
+        vendor_img: "/images/traveler3.png",
+        image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600&auto=format&fit=crop",
+        rating: 4.8,
+        reviews_count: 214,
+        price: "12,000",
+        level: "Top Rated",
+        category: "Heritage Tours",
+    },
+    {
+        id: "gig-004",
+        title: "Ella Train Scenic Drive & Nine Arch Bridge Sunrise Walk",
+        vendor: "Kavinda Rajapaksa",
+        vendor_img: "/images/traveler1.png",
+        image: "https://images.unsplash.com/photo-1565967511849-76a60a516170?q=80&w=600&auto=format&fit=crop",
+        rating: 4.9,
+        reviews_count: 89,
+        price: "8,500",
+        level: "Rising Star",
+        category: "Nature & Wildlife",
+    },
+    {
+        id: "gig-005",
+        title: "Authentic Ayurvedic Wellness Ritual at a Kandyan Spa",
+        vendor: "Dilini Perera",
+        vendor_img: "/images/traveler2.png",
+        image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=600&auto=format&fit=crop",
+        rating: 4.7,
+        reviews_count: 61,
+        price: "7,000",
+        level: "Verified Pro",
+        category: "Wellness",
+    },
+    {
+        id: "gig-006",
+        title: "Traditional Batik & Handloom Craft Workshop in Kandy",
+        vendor: "Amal Wijesinghe",
+        vendor_img: "/images/traveler3.png",
+        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600&auto=format&fit=crop",
+        rating: 4.6,
+        reviews_count: 33,
+        price: "3,500",
+        level: "Rising Star",
+        category: "Local Crafts",
+    },
+    {
+        id: "gig-007",
+        title: "White Water Rafting on the Kelani River — Full Adventure",
+        vendor: "Roshan Mendis",
+        vendor_img: "/images/traveler1.png",
+        image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=600&auto=format&fit=crop",
+        rating: 4.9,
+        reviews_count: 156,
+        price: "6,500",
+        level: "Top Rated",
+        category: "Adventure",
+    },
+    {
+        id: "gig-008",
+        title: "Galle Fort Heritage Walk with a Local Historian Guide",
+        vendor: "Tharindi Cooray",
+        vendor_img: "/images/traveler2.png",
+        image: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?q=80&w=600&auto=format&fit=crop",
+        rating: 4.8,
+        reviews_count: 72,
+        price: "5,000",
+        level: "Verified Pro",
+        category: "Heritage Tours",
+    },
+];
 
 const CATEGORIES = [
     "All Categories", "Culinary & Food", "Nature & Wildlife",
     "Heritage Tours", "Local Crafts", "Wellness", "Adventure", "Transport",
 ];
 
+type Gig = typeof MOCK_GIGS[0];
+
 export default function TouristDashboard() {
     const [categoryFilter, setCategoryFilter] = useState("All Categories");
     const [search, setSearch] = useState("");
-    const [gigs, setGigs] = useState<Gig[]>([]);
-    const [loading, setLoading] = useState(true);
     const [favorites, setFavorites] = useState<string[]>([]);
 
-    // Fetch gigs from Supabase
-    useEffect(() => {
-        const fetchGigs = async () => {
-            setLoading(true);
-            let query = supabase
-                .from("gigs")
-                .select("id, title, vendor, vendor_img, image, rating, reviews_count, price, level, category")
-                .eq("is_active", true)
-                .order("created_at", { ascending: false });
-
-            if (categoryFilter !== "All Categories") {
-                query = query.eq("category", categoryFilter);
-            }
-            if (search.trim()) {
-                query = query.ilike("title", `%${search.trim()}%`);
-            }
-
-            const { data, error } = await query;
-            if (!error && data) setGigs(data);
-            setLoading(false);
-        };
-        fetchGigs();
-    }, [categoryFilter, search]);
+    const gigs: Gig[] = MOCK_GIGS.filter((g) => {
+        const matchCat = categoryFilter === "All Categories" || g.category === categoryFilter;
+        const matchSearch = !search.trim() || g.title.toLowerCase().includes(search.toLowerCase());
+        return matchCat && matchSearch;
+    });
 
     const toggleFavo = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -110,22 +178,8 @@ export default function TouristDashboard() {
                             </div>
                         </div>
 
-                        {/* Loading skeleton */}
-                        {loading && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                                {Array.from({ length: 8 }).map((_, i) => (
-                                    <div key={i} className="flex flex-col animate-pulse">
-                                        <div className="aspect-[4/3] w-full rounded-xl bg-slate-100 mb-3" />
-                                        <div className="h-3 bg-slate-100 rounded w-2/3 mb-2" />
-                                        <div className="h-3 bg-slate-100 rounded w-full mb-1" />
-                                        <div className="h-3 bg-slate-100 rounded w-4/5" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
                         {/* Empty state */}
-                        {!loading && gigs.length === 0 && (
+                        {gigs.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-24 space-y-3 text-center">
                                 <div className="text-5xl">🔍</div>
                                 <p className="text-lg font-bold text-slate-700">No experiences found</p>
@@ -134,21 +188,19 @@ export default function TouristDashboard() {
                         )}
 
                         {/* Gig grid */}
-                        {!loading && gigs.length > 0 && (
+                        {gigs.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                                 {gigs.map(s => {
                                     const isLiked = favorites.includes(s.id);
                                     return (
                                         <Link key={s.id} href={`/gig/${s.id}`} className="group flex flex-col cursor-pointer">
                                             <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-100">
-                                                {s.image && (
-                                                    <Image
-                                                        src={s.image}
-                                                        alt={s.title}
-                                                        fill
-                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                    />
-                                                )}
+                                                <Image
+                                                    src={s.image}
+                                                    alt={s.title}
+                                                    fill
+                                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                />
                                                 <div
                                                     onClick={e => toggleFavo(s.id, e)}
                                                     className={`absolute top-3 right-3 p-1.5 rounded-full z-10 hover:scale-110 active:scale-95 transition-all ${isLiked ? 'bg-white shadow-sm' : 'bg-black/20 hover:bg-black/30'}`}
@@ -159,7 +211,7 @@ export default function TouristDashboard() {
 
                                             <div className="flex items-center space-x-2.5 mb-2 px-1">
                                                 <div className="w-6 h-6 rounded-full bg-slate-200 border border-slate-100 overflow-hidden relative shadow-sm">
-                                                    {s.vendor_img && <Image src={s.vendor_img} alt={s.vendor} fill className="object-cover" />}
+                                                    <Image src={s.vendor_img} alt={s.vendor} fill className="object-cover" />
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <p className="text-[13px] font-bold text-slate-900 hover:underline leading-none">{s.vendor}</p>
