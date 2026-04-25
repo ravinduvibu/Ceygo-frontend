@@ -51,7 +51,13 @@ interface User {
 }
 
 // ── Mock Data ─────────────────────────────────────────────
-const initialUsers: User[] = [];
+const initialUsers: User[] = [
+    { id: "1", name: "Maya Silva", email: "maya@ceygo.lk", phone: "+94 77 123 4567", joined: "Jan 12, 2024", role: "Admin", status: "Active", avatar: "MS" },
+    { id: "2", name: "Hiroshi Tanaka", email: "hiroshi@gmail.com", phone: "+81 90 888 9999", joined: "Feb 05, 2024", role: "Tourist", status: "Active", avatar: "HT" },
+    { id: "3", name: "Emma Thompson", email: "emma.t@yahoo.com", phone: "+44 20 7946 0000", joined: "Mar 15, 2024", role: "Seller", status: "Active", avatar: "ET" },
+    { id: "4", name: "Priya Krishnan", email: "priya.k@ceygo.lk", phone: "+94 71 555 1212", joined: "Apr 01, 2024", role: "Tourist", status: "Suspended", avatar: "PK" },
+    { id: "5", name: "David Chen", email: "david.chen@seller.com", phone: "+86 10 6543 2100", joined: "Apr 10, 2024", role: "Seller", status: "Active", avatar: "DC" },
+];
 
 // ── Permission definitions ────────────────────────────────
 const permissionGroups = [
@@ -178,31 +184,12 @@ export default function UserManagement() {
     const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const fetchUsers = async () => {
         setLoading(true);
-        try {
-            const response = await fetch("http://localhost:5000/api/users");
-            const result = await response.json();
-            if (result.data) {
-                const mappedUsers: User[] = result.data.map((u: any) => ({
-                    id: u.id,
-                    name: u.full_name || "Unknown User",
-                    email: u.email,
-                    phone: u.phone || "+94 --- --- ----",
-                    joined: new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    role: u.role === "Partner" ? "Seller" : u.role === "Traveler" ? "Tourist" : u.role || "Tourist",
-                    status: u.status || "Active",
-                    avatar: (u.full_name || "??").split(" ").map((n: any) => n[0]).join("").substring(0, 2).toUpperCase()
-                }));
-                setUsers(mappedUsers);
-            }
-        } catch (error) {
-            console.error("Error fetching users:", error);
-        } finally {
-            setLoading(false);
-        }
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -210,81 +197,35 @@ export default function UserManagement() {
     }, []);
 
     const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
-        try {
-            // Map frontend role back to backend role if necessary
-            const backendUpdates: any = { ...updates };
-            if (updates.role === "Seller") backendUpdates.role = "Partner";
-            if (updates.role === "Tourist") backendUpdates.role = "Traveler";
-
-            const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(backendUpdates),
-            });
-
-            if (response.ok) {
-                setSaved(true);
-                setTimeout(() => setSaved(false), 3000);
-                fetchUsers(); // Refresh list
-            }
-        } catch (error) {
-            console.error("Error updating user:", error);
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
+        if (selectedUser?.id === userId) {
+            setSelectedUser({ ...selectedUser, ...updates });
         }
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
     };
 
     const handleDeleteUser = async (userId: string) => {
         if (!confirm("Are you sure you want to revoke access for this user? This action cannot be undone.")) return;
-        
-        try {
-            // Note: Since we don't have a specific DELETE /api/users/:id yet, 
-            // I should add it to the backend or use the generic one if available.
-            // But for now, let's assume we use DELETE /api/users/:id
-            const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
-                method: "DELETE",
-            });
-
-            if (response.ok) {
-                setSelectedUser(null);
-                fetchUsers();
-            }
-        } catch (error) {
-            console.error("Error deleting user:", error);
-        }
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        setSelectedUser(null);
     };
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        try {
-            // Map frontend role to backend role
-            let backendRole = newUserForm.role;
-            if (newUserForm.role === "Seller") backendRole = "Partner" as Role;
-            if (newUserForm.role === "Tourist") backendRole = "Traveler" as Role;
-
-            const response = await fetch("http://localhost:5000/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    full_name: newUserForm.name,
-                    email: newUserForm.email,
-                    password: newUserForm.password,
-                    role: backendRole,
-                    status: "Active"
-                }),
-            });
-
-            if (response.ok) {
-                setIsAddModalOpen(false);
-                setNewUserForm({ name: "", email: "", password: "", role: "Seller" as Role }); // Clear form
-                fetchUsers(); // Refresh list
-            } else {
-                const errorData = await response.json();
-                alert(`Error adding user: ${errorData.error}`);
-            }
-        } catch (error) {
-            console.error("Error adding user:", error);
-            alert("An error occurred while adding the user.");
-        }
+        const newUser: User = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: newUserForm.name,
+            email: newUserForm.email,
+            phone: "+94 --- --- ----",
+            joined: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            role: newUserForm.role,
+            status: "Active",
+            avatar: newUserForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+        };
+        setUsers(prev => [newUser, ...prev]);
+        setIsAddModalOpen(false);
+        setNewUserForm({ name: "", email: "", password: "", role: "Seller" as Role });
     };
 
     const filtered = users.filter((u) => {
