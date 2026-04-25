@@ -146,10 +146,10 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
                         <p className="text-sm font-semibold text-slate-800 truncate">{loading ? "Loading..." : (fullName || "New User")}</p>
                         <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                     </div>
-                    <button 
-                        onClick={() => { 
-                            document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                            router.push('/');
+                    <button
+                        onClick={async () => {
+                            await fetch("/api/auth/set-role", { method: "DELETE" });
+                            router.push('/signin');
                         }}
                         className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                         title="Log out"

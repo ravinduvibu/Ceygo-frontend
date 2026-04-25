@@ -65,12 +65,6 @@ function DashboardContent() {
 
     // Sync tab param if missing on mount
     useEffect(() => {
-        // Immediate client-side auth check to prevent bfcache bypassing middleware
-        if (!document.cookie.includes('auth=')) {
-            window.location.replace('/');
-            return;
-        }
-
         if (!tabParam && activeTab === "Dashboard") {
             router.replace(`?tab=Dashboard`, { scroll: false });
         }
@@ -160,10 +154,10 @@ function DashboardContent() {
                             <p className="text-sm font-semibold text-slate-800 truncate">Nuwan Perera</p>
                             <p className="text-xs text-slate-400 truncate">TukTuk Partner</p>
                         </div>
-                        <button 
-                            onClick={() => { 
-                                document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
-                                window.location.replace("/"); 
+                        <button
+                            onClick={async () => {
+                                await fetch("/api/auth/set-role", { method: "DELETE" });
+                                window.location.replace("/signin");
                             }}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                             title="Log out"

@@ -1,25 +1,125 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-export function proxy(req: NextRequest) {
-  const res = NextResponse.next()
+type Role = "traveler" | "partner" | "admin";
 
-  const hasSession = req.cookies.get('auth')?.value === 'true'
+// Which roles may access each route prefix
+const PROTECTED: [string, Role[]][] = [
+  ["/admin", ["admin"]],
+  ["/usermanagement", ["admin"]],
+  ["/verification", ["admin"]],
+  ["/forecasting", ["admin"]],
+  ["/settings/admin", ["admin"]],
+  ["/verified-reviews/admin", ["admin"]],
+  ["/partnerdashboard", ["partner"]],
+  ["/settings/partner", ["partner"]],
+  ["/dashboard", ["traveler"]],
+  ["/wishlist", ["traveler"]],
+  ["/bookings", ["traveler"]],
+  ["/settings/traveler", ["traveler"]],
+  ["/verified-reviews/traveler", ["traveler"]],
+  ["/leave-a-review", ["traveler"]],
+  ["/messages", ["traveler", "partner"]],
+  ["/onboarding", ["partner"]],
+];
 
-  // Protect Admin Routes
-  const isAdminRoute = req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')
-  if (isAdminRoute && !hasSession) {
-    return NextResponse.redirect(new URL('/admin-loging', req.url))
+const ROLE_HOME: Record<Role, string> = {
+  traveler: "/dashboard",
+  partner: "/partnerdashboard",
+  admin: "/admin",
+};
+
+function requiredRoles(path: string): Role[] | null {
+  for (const [prefix, roles] of PROTECTED) {
+    if (path === prefix || path.startsWith(prefix + "/")) return roles;
+  }
+  return null;
+}
+
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const path = request.nextUrl.pathname;
+  const needed = requiredRoles(path);
+
+  // Public route — no protection needed
+  if (!needed) return supabaseResponse;
+
+  // ── Dev mode: trust the role cookie without a real Supabase session ──────
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS === "true") {
+    const devRole = request.cookies.get("ceygo_role")?.value as Role | undefined;
+    if (!devRole) {
+      const to = path.startsWith("/admin") ? "/admin-loging" : "/signin";
+      return NextResponse.redirect(new URL(to, request.url));
+    }
+    if (!needed.includes(devRole)) {
+      return NextResponse.redirect(new URL(ROLE_HOME[devRole] ?? "/signin", request.url));
+    }
+    return supabaseResponse;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Not authenticated
+  if (!user) {
+    const to = path.startsWith("/admin") ? "/admin-loging" : "/signin";
+    return NextResponse.redirect(new URL(to, request.url));
   }
 
-  // Protect Partner Dashboard
-  if (req.nextUrl.pathname.startsWith('/partnerdashboard') && !hasSession) {
-    return NextResponse.redirect(new URL('/signin', req.url))
+  // Get role — prefer the cookie (fast), fall back to DB (first load after cookie loss)
+  let role = request.cookies.get("ceygo_role")?.value as Role | undefined;
+
+  if (!role) {
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    role = p?.role as Role | undefined;
+    if (role) supabaseResponse.cookies.set("ceygo_role", role, { path: "/", maxAge: 86400, sameSite: "lax" });
   }
 
-  return res
+  if (!role || !needed.includes(role)) {
+    const home = role ? ROLE_HOME[role] : "/signin";
+    return NextResponse.redirect(new URL(home, request.url));
+  }
+
+  return supabaseResponse;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/partnerdashboard/:path*'],
-}
+  matcher: [
+    "/admin/:path*",
+    "/usermanagement/:path*",
+    "/verification/:path*",
+    "/forecasting/:path*",
+    "/settings/:path*",
+    "/partnerdashboard/:path*",
+    "/dashboard/:path*",
+    "/wishlist/:path*",
+    "/bookings/:path*",
+    "/messages/:path*",
+    "/onboarding/:path*",
+    "/verified-reviews/traveler/:path*",
+    "/verified-reviews/admin/:path*",
+    "/leave-a-review/:path*",
+  ],
+};
