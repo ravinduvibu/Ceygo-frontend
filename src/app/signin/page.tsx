@@ -62,27 +62,9 @@ function SignInContent() {
     if (!cleanEmail) { setError("Email is required."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) { setError("Please enter a valid email address."); return; }
     if (!cleanPassword) { setError("Password is required."); return; }
-    if (cleanPassword.length < 5) { setError("Password must be at least 5 characters."); return; }
+    if (cleanPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
 
     setLoading(true);
-
-    // Dev bypass — always check hardcoded test accounts first
-    const DEV_USERS = [
-      { email: "travaller@gmail.com", password: "travaller12345678", role: "traveler" },
-      { email: "partner@gmail.com",   password: "partner12345678",   role: "partner"  },
-      { email: "admin@gmail.com",     password: "admin12345678",     role: "admin"    },
-    ];
-    const devUser = DEV_USERS.find(u => u.email === cleanEmail && u.password === cleanPassword);
-    if (devUser) {
-      if (devUser.role !== role.toLowerCase()) {
-        setLoading(false);
-        setError(`This account is registered as a ${devUser.role}. Please select the correct role.`);
-        return;
-      }
-      await setRoleCookie(devUser.role);
-      router.push(ROLE_HOME[devUser.role]);
-      return;
-    }
 
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({

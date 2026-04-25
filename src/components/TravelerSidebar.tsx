@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
     LayoutDashboard,
@@ -24,14 +24,14 @@ interface SidebarProps {
 }
 
 const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", count: 0, href: "/dashboard" },
-    { icon: Bookmark, label: "My Verified Journeys", count: 0, href: "/dashboard/My-Verified-Journeys" },
-    { icon: MessageSquare, label: "Message Artisan", count: 0, href: "/messages" },
-    { icon: Compass, label: "Find Experiences", count: 0, href: "/search" },
-    { icon: Heart, label: "Wishlist", count: 0, href: "/wishlist" },
-    { icon: Star, label: "Verified Reviews", count: 0, href: "/verified-reviews/traveler" },
-    { icon: BookOpen, label: "Platform Guide", count: 0, href: "/guide" },
-    { icon: Settings, label: "Settings", count: 0, href: "/settings/traveler" },
+    { icon: LayoutDashboard, label: "Dashboard",            count: 0, href: "/dashboard" },
+    { icon: Bookmark,        label: "My Verified Journeys", count: 0, href: "/dashboard/My-Verified-Journeys" },
+    { icon: MessageSquare,   label: "Message Artisan",      count: 0, href: "/messages" },
+    { icon: Compass,         label: "Find Experiences",     count: 0, href: "/search" },
+    { icon: Heart,           label: "Wishlist",             count: 0, href: "/wishlist" },
+    { icon: Star,            label: "Verified Reviews",     count: 0, href: "/verified-reviews/traveler" },
+    { icon: BookOpen,        label: "Platform Guide",       count: 0, href: "/guide" },
+    { icon: Settings,        label: "Settings",             count: 0, href: "/settings/traveler" },
 ];
 
 const CLEARED_KEY = "ceygo_nav_cleared";
@@ -47,29 +47,13 @@ function clearNavLabel(label: string) {
     }
 }
 
-export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCount = 0 }: SidebarProps) {
-    const router = useRouter();
+export default function TravelerSidebar({ activePage }: SidebarProps) {
+    const { profile, loading, signOut } = useAuth();
     const [clearedLabels, setClearedLabels] = useState<string[]>([]);
-    
-    // Auth & Dynamic Notification State
-    const [fullName, setFullName] = useState("");
-    const [avatar, setAvatar] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [unreadMessages, setUnreadMessages] = useState(0);
-    const [activeJourneys, setActiveJourneys] = useState(0);
-    const [wishlistItems, setWishlistItems] = useState(0);
 
     useEffect(() => {
         clearNavLabel(activePage);
-        setTimeout(() => {
-            setClearedLabels(getClearedLabels());
-            setFullName("Alex Johnson");
-            setAvatar("");
-            setUnreadMessages(2);
-            setActiveJourneys(1);
-            setWishlistItems(3);
-            setLoading(false);
-        }, 0);
+        setClearedLabels(getClearedLabels());
     }, [activePage]);
 
     const clearAllNavLabels = () => {
@@ -78,12 +62,11 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
         setClearedLabels(allLabels);
     };
 
-    const handleNavClick = (_label: string) => {
-        // As requested: viewing a tab clears all previous notifications
-        clearAllNavLabels();
-    };
-
-    const initials = fullName ? fullName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "AA";
+    const fullName = profile?.full_name ?? "";
+    const avatar = profile?.avatar_url ?? "";
+    const initials = fullName
+        ? fullName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
+        : "TU";
 
     return (
         <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm z-10">
@@ -96,14 +79,7 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
             <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
                 {navItems.map(({ icon: Icon, label, count, href }) => {
                     const active = label === activePage;
-                    
-                    // Assign Dynamic Counts
-                    let rawCount = count;
-                    if (label === "Wishlist") rawCount = wishlistItems;
-                    if (label === "My Verified Journeys") rawCount = activeJourneys;
-                    if (label === "Message Artisan") rawCount = unreadMessages;
-
-                    const displayCount = clearedLabels.includes(label) ? 0 : rawCount;
+                    const displayCount = clearedLabels.includes(label) ? 0 : count;
                     return (
                         <Link
                             key={label}
@@ -112,11 +88,12 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
                                 clearNavLabel(label);
                                 setClearedLabels(getClearedLabels());
                             }}
-                            onClick={() => handleNavClick(label)}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
+                            onClick={() => clearAllNavLabels()}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                                active
                                     ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm"
                                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                                }`}
+                            }`}
                         >
                             <div className="flex items-center space-x-3">
                                 <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
@@ -129,7 +106,7 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
                                 {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
                             </div>
                         </Link>
-                    )
+                    );
                 })}
             </nav>
 
@@ -143,14 +120,13 @@ export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCo
                         }
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{loading ? "Loading..." : (fullName || "New User")}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">
+                            {loading ? "Loading..." : (fullName || "Traveler")}
+                        </p>
                         <p className="text-xs text-slate-400 truncate">Traveler · Verified</p>
                     </div>
                     <button
-                        onClick={async () => {
-                            await fetch("/api/auth/set-role", { method: "DELETE" });
-                            router.push('/signin');
-                        }}
+                        onClick={signOut}
                         className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors ml-auto"
                         title="Log out"
                     >

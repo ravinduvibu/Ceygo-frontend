@@ -52,8 +52,9 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(`${origin}${redirect}`);
   response.cookies.set("ceygo_role", role, {
     path: "/",
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24,
     sameSite: "lax",
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
   });
   return response;

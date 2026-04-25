@@ -2,133 +2,71 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, Heart, BadgeCheck, Star } from "lucide-react";
 import TravelerSidebar from "@/components/TravelerSidebar";
 
-// ── Mock Data ────────────────────────────────────────────────
-const MOCK_GIGS = [
-    {
-        id: "gig-001",
-        title: "Sunset TukTuk City Tour through the streets of Colombo",
-        vendor: "Nuwan Perera",
-        vendor_img: "/images/traveler1.png",
-        image: "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600&auto=format&fit=crop",
-        rating: 4.9,
-        reviews_count: 128,
-        price: "2,800",
-        level: "Top Rated",
-        category: "Transport",
-    },
-    {
-        id: "gig-002",
-        title: "Hidden Colombo Street Food Walk — Local Secrets Only",
-        vendor: "Saman Silva",
-        vendor_img: "/images/traveler2.png",
-        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600&auto=format&fit=crop",
-        rating: 5.0,
-        reviews_count: 47,
-        price: "4,500",
-        level: "Verified Pro",
-        category: "Culinary & Food",
-    },
-    {
-        id: "gig-003",
-        title: "Private Sigiriya Rock Fortress & Ancient Village Half-Day",
-        vendor: "Priya Fernando",
-        vendor_img: "/images/traveler3.png",
-        image: "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600&auto=format&fit=crop",
-        rating: 4.8,
-        reviews_count: 214,
-        price: "12,000",
-        level: "Top Rated",
-        category: "Heritage Tours",
-    },
-    {
-        id: "gig-004",
-        title: "Ella Train Scenic Drive & Nine Arch Bridge Sunrise Walk",
-        vendor: "Kavinda Rajapaksa",
-        vendor_img: "/images/traveler1.png",
-        image: "https://images.unsplash.com/photo-1565967511849-76a60a516170?q=80&w=600&auto=format&fit=crop",
-        rating: 4.9,
-        reviews_count: 89,
-        price: "8,500",
-        level: "Rising Star",
-        category: "Nature & Wildlife",
-    },
-    {
-        id: "gig-005",
-        title: "Authentic Ayurvedic Wellness Ritual at a Kandyan Spa",
-        vendor: "Dilini Perera",
-        vendor_img: "/images/traveler2.png",
-        image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=600&auto=format&fit=crop",
-        rating: 4.7,
-        reviews_count: 61,
-        price: "7,000",
-        level: "Verified Pro",
-        category: "Wellness",
-    },
-    {
-        id: "gig-006",
-        title: "Traditional Batik & Handloom Craft Workshop in Kandy",
-        vendor: "Amal Wijesinghe",
-        vendor_img: "/images/traveler3.png",
-        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=600&auto=format&fit=crop",
-        rating: 4.6,
-        reviews_count: 33,
-        price: "3,500",
-        level: "Rising Star",
-        category: "Local Crafts",
-    },
-    {
-        id: "gig-007",
-        title: "White Water Rafting on the Kelani River — Full Adventure",
-        vendor: "Roshan Mendis",
-        vendor_img: "/images/traveler1.png",
-        image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=600&auto=format&fit=crop",
-        rating: 4.9,
-        reviews_count: 156,
-        price: "6,500",
-        level: "Top Rated",
-        category: "Adventure",
-    },
-    {
-        id: "gig-008",
-        title: "Galle Fort Heritage Walk with a Local Historian Guide",
-        vendor: "Tharindi Cooray",
-        vendor_img: "/images/traveler2.png",
-        image: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?q=80&w=600&auto=format&fit=crop",
-        rating: 4.8,
-        reviews_count: 72,
-        price: "5,000",
-        level: "Verified Pro",
-        category: "Heritage Tours",
-    },
-];
+interface GigProfile {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+}
+
+interface Gig {
+    id: string;
+    title: string;
+    price: number;
+    category: string | null;
+    location: string | null;
+    image_url: string | null;
+    rating: number | null;
+    reviews_count: number | null;
+    profiles: GigProfile | null;
+}
 
 const CATEGORIES = [
-    "All Categories", "Culinary & Food", "Nature & Wildlife",
-    "Heritage Tours", "Local Crafts", "Wellness", "Adventure", "Transport",
+    "All Categories", "Transport", "Local Guide", "Experiences",
+    "Artisan", "Culinary & Food", "Nature & Wildlife",
+    "Heritage Tours", "Local Crafts", "Wellness", "Adventure",
 ];
 
-type Gig = typeof MOCK_GIGS[0];
+const PLACEHOLDER_IMAGES = [
+    "https://images.unsplash.com/photo-1586611292717-f828b167408c?q=80&w=600&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1590845947376-2638caa89309?q=80&w=600&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1565967511849-76a60a516170?q=80&w=600&auto=format&fit=crop",
+];
 
 export default function TouristDashboard() {
     const [categoryFilter, setCategoryFilter] = useState("All Categories");
     const [search, setSearch] = useState("");
+    const [searchInput, setSearchInput] = useState("");
     const [favorites, setFavorites] = useState<string[]>([]);
+    const [gigs, setGigs] = useState<Gig[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const gigs: Gig[] = MOCK_GIGS.filter((g) => {
-        const matchCat = categoryFilter === "All Categories" || g.category === categoryFilter;
-        const matchSearch = !search.trim() || g.title.toLowerCase().includes(search.toLowerCase());
-        return matchCat && matchSearch;
-    });
+    useEffect(() => {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (categoryFilter !== "All Categories") params.set("category", categoryFilter);
+        if (search) params.set("q", search);
+
+        fetch(`/api/gigs?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                setGigs(Array.isArray(data) ? data : []);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [categoryFilter, search]);
 
     const toggleFavo = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
     };
+
+    const formatPrice = (price: number) =>
+        price.toLocaleString("en-LK");
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
@@ -142,10 +80,14 @@ export default function TouristDashboard() {
                         <input
                             className="bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none flex-1 font-medium"
                             placeholder="What service are you looking for?"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            value={searchInput}
+                            onChange={e => setSearchInput(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && setSearch(searchInput)}
                         />
-                        <button className="flex items-center space-x-1.5 px-4 py-1.5 rounded-md bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors">
+                        <button
+                            onClick={() => setSearch(searchInput)}
+                            className="flex items-center space-x-1.5 px-4 py-1.5 rounded-md bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
+                        >
                             <span>Search</span>
                         </button>
                     </div>
@@ -157,7 +99,11 @@ export default function TouristDashboard() {
                         <div
                             key={cat}
                             onClick={() => setCategoryFilter(cat)}
-                            className={`cursor-pointer whitespace-nowrap hover:text-slate-900 transition-colors ${categoryFilter === cat ? "text-slate-900 border-b-2 border-[#ff6b35] h-full flex items-center" : "h-full flex items-center border-b-2 border-transparent"}`}
+                            className={`cursor-pointer whitespace-nowrap hover:text-slate-900 transition-colors ${
+                                categoryFilter === cat
+                                    ? "text-slate-900 border-b-2 border-[#ff6b35] h-full flex items-center"
+                                    : "h-full flex items-center border-b-2 border-transparent"
+                            }`}
                         >
                             {cat}
                         </div>
@@ -178,66 +124,79 @@ export default function TouristDashboard() {
                             </div>
                         </div>
 
-                        {/* Empty state */}
-                        {gigs.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-24 space-y-3 text-center">
-                                <div className="text-5xl">🔍</div>
-                                <p className="text-lg font-bold text-slate-700">No experiences found</p>
-                                <p className="text-sm text-slate-400">Try a different category or search term.</p>
+                        {loading && (
+                            <div className="flex items-center justify-center py-24">
+                                <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-[#ff6b35] animate-spin" />
                             </div>
                         )}
 
-                        {/* Gig grid */}
-                        {gigs.length > 0 && (
+                        {!loading && gigs.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-24 space-y-3 text-center">
+                                <div className="text-5xl">🌴</div>
+                                <p className="text-lg font-bold text-slate-700">No experiences found</p>
+                                <p className="text-sm text-slate-400">
+                                    {search || categoryFilter !== "All Categories"
+                                        ? "Try a different category or search term."
+                                        : "Partners haven't published any experiences yet. Check back soon!"}
+                                </p>
+                            </div>
+                        )}
+
+                        {!loading && gigs.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                                {gigs.map(s => {
-                                    const isLiked = favorites.includes(s.id);
+                                {gigs.map((gig, idx) => {
+                                    const isLiked = favorites.includes(gig.id);
+                                    const vendorName = gig.profiles?.full_name ?? "Partner";
+                                    const vendorImg = gig.profiles?.avatar_url ?? "/images/traveler1.png";
+                                    const image = gig.image_url ?? PLACEHOLDER_IMAGES[idx % PLACEHOLDER_IMAGES.length];
+                                    const rating = gig.rating ?? 0;
+                                    const reviewsCount = gig.reviews_count ?? 0;
+
                                     return (
-                                        <Link key={s.id} href={`/gig/${s.id}`} className="group flex flex-col cursor-pointer">
+                                        <Link key={gig.id} href={`/gig/${gig.id}`} className="group flex flex-col cursor-pointer">
                                             <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-100">
                                                 <Image
-                                                    src={s.image}
-                                                    alt={s.title}
+                                                    src={image}
+                                                    alt={gig.title}
                                                     fill
                                                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                                                 />
                                                 <div
-                                                    onClick={e => toggleFavo(s.id, e)}
-                                                    className={`absolute top-3 right-3 p-1.5 rounded-full z-10 hover:scale-110 active:scale-95 transition-all ${isLiked ? 'bg-white shadow-sm' : 'bg-black/20 hover:bg-black/30'}`}
+                                                    onClick={e => toggleFavo(gig.id, e)}
+                                                    className={`absolute top-3 right-3 p-1.5 rounded-full z-10 hover:scale-110 active:scale-95 transition-all ${isLiked ? "bg-white shadow-sm" : "bg-black/20 hover:bg-black/30"}`}
                                                 >
-                                                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                                                    <Heart className={`w-4 h-4 ${isLiked ? "fill-red-500 text-red-500" : "text-white"}`} />
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center space-x-2.5 mb-2 px-1">
                                                 <div className="w-6 h-6 rounded-full bg-slate-200 border border-slate-100 overflow-hidden relative shadow-sm">
-                                                    <Image src={s.vendor_img} alt={s.vendor} fill className="object-cover" />
+                                                    <Image src={vendorImg} alt={vendorName} fill className="object-cover" />
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <p className="text-[13px] font-bold text-slate-900 hover:underline leading-none">{s.vendor}</p>
-                                                    <p className="text-[11px] text-[#ff6b35] font-semibold mt-0.5 leading-none">{s.level}</p>
-                                                </div>
+                                                <p className="text-[13px] font-bold text-slate-900 hover:underline leading-none">{vendorName}</p>
                                             </div>
 
-                                            <h3 className="text-sm text-slate-700 leading-snug line-clamp-2 hover:underline mb-2 px-1 font-medium">{s.title}</h3>
+                                            <h3 className="text-sm text-slate-700 leading-snug line-clamp-2 hover:underline mb-2 px-1 font-medium">{gig.title}</h3>
 
-                                            <div className="flex items-center space-x-1.5 mb-2.5 px-1 mt-auto">
-                                                <Star className="w-3.5 h-3.5 fill-slate-900 text-slate-900" />
-                                                <span className="text-sm font-bold text-slate-900">{s.rating}</span>
-                                                <span className="text-sm text-slate-400">({s.reviews_count})</span>
-                                            </div>
+                                            {rating > 0 && (
+                                                <div className="flex items-center space-x-1.5 mb-2.5 px-1 mt-auto">
+                                                    <Star className="w-3.5 h-3.5 fill-slate-900 text-slate-900" />
+                                                    <span className="text-sm font-bold text-slate-900">{rating.toFixed(1)}</span>
+                                                    <span className="text-sm text-slate-400">({reviewsCount})</span>
+                                                </div>
+                                            )}
 
                                             <div className="pt-2 border-t border-slate-100 flex items-center justify-between px-1">
                                                 <div>
-                                                    {s.level?.includes("Pro") && (
-                                                        <span className="flex items-center space-x-0.5 bg-slate-900 text-white text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm">
-                                                            <BadgeCheck className="w-2.5 h-2.5 mr-0.5" /> Pro
+                                                    {gig.category && (
+                                                        <span className="flex items-center space-x-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm">
+                                                            <BadgeCheck className="w-2.5 h-2.5 mr-0.5" />{gig.category}
                                                         </span>
                                                     )}
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Starting At</p>
-                                                    <p className="text-base font-black text-slate-900 leading-none">LKR {s.price}</p>
+                                                    <p className="text-base font-black text-slate-900 leading-none">LKR {formatPrice(gig.price)}</p>
                                                 </div>
                                             </div>
                                         </Link>

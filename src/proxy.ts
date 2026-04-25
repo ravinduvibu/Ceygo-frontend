@@ -62,20 +62,6 @@ export async function proxy(request: NextRequest) {
   // Public route — no protection needed
   if (!needed) return supabaseResponse;
 
-  // ── Dev mode: trust the role cookie without a real Supabase session ──────
-  if (process.env.NEXT_PUBLIC_DEV_BYPASS === "true") {
-    const devRole = request.cookies.get("ceygo_role")?.value as Role | undefined;
-    if (!devRole) {
-      const to = path.startsWith("/admin") ? "/admin-loging" : "/signin";
-      return NextResponse.redirect(new URL(to, request.url));
-    }
-    if (!needed.includes(devRole)) {
-      return NextResponse.redirect(new URL(ROLE_HOME[devRole] ?? "/signin", request.url));
-    }
-    return supabaseResponse;
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-
   const { data: { user } } = await supabase.auth.getUser();
 
   // Not authenticated
@@ -94,7 +80,7 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .single();
     role = p?.role as Role | undefined;
-    if (role) supabaseResponse.cookies.set("ceygo_role", role, { path: "/", maxAge: 86400, sameSite: "lax" });
+    if (role) supabaseResponse.cookies.set("ceygo_role", role, { path: "/", maxAge: 86400, sameSite: "lax", httpOnly: true });
   }
 
   if (!role || !needed.includes(role)) {

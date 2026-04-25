@@ -2,17 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-    LayoutDashboard,
-    Users,
-    ShieldCheck,
-    BarChart3,
-    CalendarCheck2,
-    Settings,
-    Star,
-    ChevronRight,
     Search,
     Bell,
-    LogOut,
     Crown,
     UserCircle2,
     Store,
@@ -29,32 +20,37 @@ import {
     UserPlus,
     ShieldAlert,
     TrendingUp,
+    ShieldCheck,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import AdminSidebar from "@/components/AdminSidebar";
 
 // ── Types ─────────────────────────────────────────────────
 type Role = "Admin" | "Seller" | "Tourist";
 
 interface User {
-    id: string; // Changed to string for UUID
+    id: string;
     name: string;
     email: string;
-    phone: string;
     joined: string;
     role: Role;
     status: "Active" | "Suspended";
     avatar: string;
 }
 
-// ── Mock Data ─────────────────────────────────────────────
-const initialUsers: User[] = [
-    { id: "1", name: "Maya Silva", email: "maya@ceygo.lk", phone: "+94 77 123 4567", joined: "Jan 12, 2024", role: "Admin", status: "Active", avatar: "MS" },
-    { id: "2", name: "Hiroshi Tanaka", email: "hiroshi@gmail.com", phone: "+81 90 888 9999", joined: "Feb 05, 2024", role: "Tourist", status: "Active", avatar: "HT" },
-    { id: "3", name: "Emma Thompson", email: "emma.t@yahoo.com", phone: "+44 20 7946 0000", joined: "Mar 15, 2024", role: "Seller", status: "Active", avatar: "ET" },
-    { id: "4", name: "Priya Krishnan", email: "priya.k@ceygo.lk", phone: "+94 71 555 1212", joined: "Apr 01, 2024", role: "Tourist", status: "Suspended", avatar: "PK" },
-    { id: "5", name: "David Chen", email: "david.chen@seller.com", phone: "+86 10 6543 2100", joined: "Apr 10, 2024", role: "Seller", status: "Active", avatar: "DC" },
-];
+// Map DB roles to display roles
+function toDisplayRole(dbRole: string): Role {
+    if (dbRole === "admin") return "Admin";
+    if (dbRole === "partner") return "Seller";
+    return "Tourist";
+}
+function toDbRole(displayRole: Role): string {
+    if (displayRole === "Admin") return "admin";
+    if (displayRole === "Seller") return "partner";
+    return "traveler";
+}
+function formatJoinDate(iso: string): string {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 // ── Permission definitions ────────────────────────────────
 const permissionGroups = [
@@ -108,16 +104,6 @@ function RoleBadge({ role }: { role: Role }) {
     );
 }
 
-// ── Nav sidebar ───────────────────────────────────────────
-const navItems = [
-    { icon: LayoutDashboard, label: "Overview", href: "/admin", active: false },
-    { icon: Users, label: "User Management", href: "/usermanagement", active: true },
-    { icon: ShieldCheck, label: "Seller Verification", href: "/verification", active: false, badge: 148 },
-    { icon: BarChart3, label: "Analytics", href: "/forecasting", active: false },
-    { icon: CalendarCheck2, label: "Bookings", href: "/bookings", active: false },
-    { icon: Star, label: "Verified Reviews", href: "/verified-reviews/admin", active: false, badge: 1 },
-    { icon: Settings, label: "Settings", href: "/settings/admin", active: false },
-];
 
 // Build default toggled state from role
 function defaultPerms(role: Role): Record<string, boolean> {
@@ -153,7 +139,8 @@ const initialNotifications: Notification[] = [
 export default function UserManagement() {
     const [search, setSearch] = useState("");
     const [filterRole, setFilterRole] = useState<Role | "All">("All");
-    const [users, setUsers] = useState<User[]>(initialUsers);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loadingUsers, setLoadingUsers] = useState(true);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [editRole, setEditRole] = useState<Role>("Tourist");
     const [customPerms, setCustomPerms] = useState<Record<string, boolean>>({});
@@ -168,6 +155,25 @@ export default function UserManagement() {
     const notifRef = useRef<HTMLDivElement>(null);
     const unreadCount = notifications.filter(n => !n.read).length;
 
+    // Fetch real users
+    useEffect(() => {
+        fetch("/api/admin/users")
+            .then(r => r.json())
+            .then((data: Array<{ id: string; full_name: string | null; email: string; role: string; is_active: boolean; created_at: string }>) => {
+                if (!Array.isArray(data)) return;
+                setUsers(data.map(u => ({
+                    id: u.id,
+                    name: u.full_name ?? u.email,
+                    email: u.email,
+                    joined: formatJoinDate(u.created_at),
+                    role: toDisplayRole(u.role),
+                    status: u.is_active ? "Active" : "Suspended",
+                    avatar: (u.full_name ?? u.email).split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase(),
+                })));
+            })
+            .finally(() => setLoadingUsers(false));
+    }, []);
+
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
@@ -181,35 +187,38 @@ export default function UserManagement() {
     const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     const dismissNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
-
     const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
+        // Optimistic UI update
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
-        if (selectedUser?.id === userId) {
-            setSelectedUser({ ...selectedUser, ...updates });
-        }
+        if (selectedUser?.id === userId) setSelectedUser(prev => prev ? { ...prev, ...updates } : prev);
+
+        // Persist to DB
+        const dbUpdates: Record<string, unknown> = {};
+        if (updates.role !== undefined) dbUpdates.role = toDbRole(updates.role);
+        if (updates.status !== undefined) dbUpdates.is_active = updates.status === "Active";
+
+        await fetch(`/api/admin/users/${userId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dbUpdates),
+        });
+
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
     };
 
     const handleDeleteUser = async (userId: string) => {
         if (!confirm("Are you sure you want to revoke access for this user? This action cannot be undone.")) return;
+        await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
         setUsers(prev => prev.filter(u => u.id !== userId));
         setSelectedUser(null);
     };
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newUser: User = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: newUserForm.name,
-            email: newUserForm.email,
-            phone: "+94 --- --- ----",
-            joined: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            role: newUserForm.role,
-            status: "Active",
-            avatar: newUserForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
-        };
-        setUsers(prev => [newUser, ...prev]);
+        // Creating users requires Supabase service role — not available here.
+        // Direct users to sign up or create via Supabase Dashboard.
+        alert("To add users, ask them to sign up at /signup, or create them via the Supabase Dashboard > Authentication > Users.");
         setIsAddModalOpen(false);
         setNewUserForm({ name: "", email: "", password: "", role: "Seller" as Role });
     };
@@ -243,48 +252,7 @@ export default function UserManagement() {
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
 
-            {/* ── Sidebar ── */}
-            <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 shadow-sm">
-                <div className="px-5 py-5 flex items-center space-x-3 border-b border-slate-100">
-                    <div className="relative h-9 w-28">
-                        <Image src="/images/logo_transparent.png" alt="Ceygo" fill className="object-contain" priority />
-                    </div>
-                    <span className="text-[10px] font-bold text-[#ff6b35] tracking-widest uppercase bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
-                        Admin
-                    </span>
-                </div>
-                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                    {navItems.map(({ icon: Icon, label, active, badge, href }) => (
-                        <Link key={label} href={href}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active ? "bg-orange-50 text-[#ff6b35] border border-orange-100 shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                                }`}
-                        >
-                            <div className="flex items-center space-x-3">
-                                <Icon className={`w-4 h-4 ${active ? "text-[#ff6b35]" : "text-slate-400 group-hover:text-slate-600"}`} />
-                                <span>{label}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                                {badge && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">{badge}</span>}
-                                {active && <ChevronRight className="w-3.5 h-3.5 text-[#ff6b35]" />}
-                            </div>
-                        </Link>
-                    ))}
-                </nav>
-                <div className="p-4 border-t border-slate-100">
-                    <Link 
-                        href="/" 
-                        onClick={async () => { await fetch("/api/auth/set-role", { method: "DELETE" }); window.location.replace("/signin"); }}
-                        className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer group transition-colors"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">SA</div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">Super Admin</p>
-                            <p className="text-xs text-slate-400 truncate">admin@ceygo.lk</p>
-                        </div>
-                        <LogOut className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                    </Link>
-                </div>
-            </aside>
+            <AdminSidebar activePage="User Management" />
 
             {/* ── Main ── */}
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -456,7 +424,13 @@ export default function UserManagement() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {filtered.map(u => (
+                                            {loadingUsers && (
+                                                <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">Loading users…</td></tr>
+                                            )}
+                                            {!loadingUsers && filtered.length === 0 && (
+                                                <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">No users found.</td></tr>
+                                            )}
+                                            {!loadingUsers && filtered.map(u => (
                                                 <tr key={u.id}
                                                     className={`hover:bg-slate-50 transition-colors ${selectedUser?.id === u.id ? "bg-orange-50/50" : ""}`}
                                                 >
@@ -470,7 +444,6 @@ export default function UserManagement() {
                                                     </td>
                                                     <td className="px-5 py-3.5">
                                                         <p className="text-xs text-slate-600">{u.email}</p>
-                                                        <p className="text-[10px] text-slate-400">{u.phone}</p>
                                                     </td>
                                                     <td className="px-5 py-3.5">
                                                         <p className="text-xs text-slate-600 whitespace-nowrap">{u.joined}</p>

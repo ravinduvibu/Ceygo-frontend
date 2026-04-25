@@ -18,13 +18,6 @@ export default function AdminLogin() {
     setIsLoading(true);
     setError(null);
 
-    // Dev bypass — always check hardcoded admin credentials first
-    if (email.trim() === "admin@gmail.com" && password.trim() === "admin12345678") {
-      await setRoleCookie("admin");
-      router.push("/admin");
-      return;
-    }
-
     const supabase = createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
@@ -52,7 +45,7 @@ export default function AdminLogin() {
       return;
     }
 
-    setRoleCookie("admin");
+    await setRoleCookie("admin");
     router.push("/admin");
   };
 

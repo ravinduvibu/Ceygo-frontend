@@ -89,7 +89,7 @@ export default function SignUp() {
     // Email confirmation disabled in Supabase — session is live
     await setRoleCookie(role.toLowerCase());
     if (role === "Partner") {
-      router.push("/onboarding");
+      router.push("/partnerdashboard");
     } else {
       router.push("/dashboard");
     }
