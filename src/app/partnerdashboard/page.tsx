@@ -13,7 +13,7 @@ import {
     Plus,
     Clock,
     CheckCircle2,
-    Star,
+
     MoreHorizontal,
     TrendingUp,
 } from "lucide-react";
@@ -30,7 +30,8 @@ import { useAuth } from "@/contexts/AuthContext";
 interface DashboardService {
     id: string;
     title: string;
-    image: string;
+    image: string;      // emoji fallback
+    image_url: string | null;
     activeOrders: number;
     price: string;
     rating: number;
@@ -52,6 +53,7 @@ interface ApiGig {
     title: string;
     price: number;
     category: string | null;
+    image_url: string | null;
     rating: number | null;
     reviews_count: number | null;
     orders_count: number | null;
@@ -86,6 +88,7 @@ function mapGig(g: ApiGig): DashboardService {
         id: g.id,
         title: g.title,
         image: gigEmoji(g.category),
+        image_url: g.image_url ?? null,
         activeOrders: g.orders_count ?? 0,
         price: `LKR ${(g.price).toLocaleString("en-LK")}`,
         rating: g.rating ?? 0,
@@ -381,8 +384,12 @@ function DashboardContent() {
                                             <div className="grid grid-cols-3 gap-4">
                                                 {gigs.map((svc) => (
                                                     <div key={svc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group">
-                                                        <Link href={`/gig/${svc.id}`} className="h-32 bg-slate-100 flex items-center justify-center text-5xl border-b border-slate-100 group-hover:bg-emerald-50 transition-colors relative">
-                                                            {svc.image}
+                                                        <Link href={`/gig/${svc.id}`} className="h-32 bg-slate-100 flex items-center justify-center border-b border-slate-100 transition-colors relative overflow-hidden group-hover:bg-emerald-50">
+                                                            {svc.image_url ? (
+                                                                <Image src={svc.image_url} alt={svc.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+                                                            ) : (
+                                                                <span className="text-5xl">{svc.image}</span>
+                                                            )}
                                                             <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                                 <span className="text-white text-xs font-bold bg-slate-900/60 px-3 py-1.5 rounded-full backdrop-blur-sm">View Gig</span>
                                                             </div>
@@ -391,12 +398,7 @@ function DashboardContent() {
                                                             <Link href={`/gig/${svc.id}`} className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 hover:text-emerald-600 transition-colors">
                                                                 {svc.title}
                                                             </Link>
-                                                            <div className="flex items-center justify-between mt-auto pt-4">
-                                                                <div className="flex items-center space-x-1">
-                                                                    <Star className="w-3.5 h-3.5 fill-[#f59e0b] stroke-[#f59e0b]" />
-                                                                    <span className="text-xs font-bold text-amber-500">{svc.rating > 0 ? svc.rating.toFixed(1) : "New"}</span>
-                                                                    {svc.reviews > 0 && <span className="text-[10px] text-slate-400">({svc.reviews})</span>}
-                                                                </div>
+                                                            <div className="flex items-center justify-end mt-auto pt-4">
                                                                 <span className="text-sm font-black text-slate-900">{svc.price}</span>
                                                             </div>
                                                         </div>

@@ -39,14 +39,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/signin?error=auth_callback_failed`);
   }
 
-  // Always use DB role — never trust the URL role param for existing or new users
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", session.user.id)
     .single();
 
-  const role = (profile?.role ?? "traveler") as string;
+  let role = (profile?.role ?? "traveler") as string;
+
+  // For new Google users the trigger defaults role to 'traveler'.
+  // If signup page passed role=partner and this is a brand-new account, fix it.
+  const urlRole = searchParams.get("role");
+  const isNewAccount =
+    Date.now() - new Date(session.user.created_at).getTime() < 60_000;
+
+  if (isNewAccount && urlRole === "partner" && role === "traveler") {
+    await supabase
+      .from("profiles")
+      .update({ role: "partner" })
+      .eq("id", session.user.id);
+    role = "partner";
+  }
+
   const redirect = ROLE_HOME[role] ?? "/dashboard";
 
   const response = NextResponse.redirect(`${origin}${redirect}`);

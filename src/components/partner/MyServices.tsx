@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Star, Image as ImageIcon, Eye, MousePointerClick, CalendarCheck2, Trash2, Edit3, PauseCircle, PlayCircle, Loader2, Clock } from "lucide-react";
+import { Plus, Image as ImageIcon, Eye, MousePointerClick, CalendarCheck2, Trash2, Edit3, PauseCircle, PlayCircle, Loader2, Clock } from "lucide-react";
 import Image from "next/image";
 import CreateServiceModal from "./CreateServiceModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -309,12 +309,7 @@ export default function MyServices() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between mt-auto">
-                                    <div className="flex items-center space-x-1">
-                                        <Star className="w-4 h-4 fill-amber-400 stroke-amber-400" />
-                                        <span className="text-sm font-black text-amber-500">{svc.rating.toFixed(1)}</span>
-                                        <span className="text-xs text-slate-400 font-medium">({svc.reviews})</span>
-                                    </div>
+                                <div className="flex items-center justify-end mt-auto">
                                     <span className="text-base font-black text-slate-900">{svc.price}</span>
                                 </div>
                             </div>
