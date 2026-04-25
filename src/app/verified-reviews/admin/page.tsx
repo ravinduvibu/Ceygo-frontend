@@ -28,7 +28,6 @@ import {
     TrendingUp,
     EyeOff,
     CheckCheck,
-    UserPlus,
     ShieldAlert,
 } from "lucide-react";
 import Image from "next/image";
@@ -564,7 +563,7 @@ export default function VerifiedReviewsPage() {
                                 <div className="space-y-1.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Review Content</p>
                                     <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        "{selectedReview.text}"
+                                        &ldquo;{selectedReview.text}&rdquo;
                                     </p>
                                 </div>
 
@@ -716,7 +715,7 @@ function ReviewCard({ review, selected, onSelect }: { review: Review; selected: 
                             <span className="text-[10px] font-mono text-slate-400">{review.transactionId}</span>
                         )}
                     </div>
-                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-2">"{review.text}"</p>
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-2">&ldquo;{review.text}&rdquo;</p>
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-[10px] font-semibold text-slate-700">{review.service}</p>

@@ -7,7 +7,6 @@ import {
     ShieldCheck,
     BarChart3,
     CalendarCheck2,
-    Activity,
     Settings,
     Star,
     Bell,
@@ -32,7 +31,6 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    Line,
 } from "recharts";
 
 // ── Mock Data ──────────────────────────────────────────────

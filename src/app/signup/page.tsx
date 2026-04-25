@@ -5,9 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import RoleToggle from "@/components/RoleToggle";
-import Input from "@/components/Input";
 import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient"; // TODO: re-integrate
 
 export default function SignUp() {
   const [role, setRole] = useState("Traveler");

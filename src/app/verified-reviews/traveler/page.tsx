@@ -46,7 +46,7 @@ export default function TravelerReviews() {
                                     </div>
                                     <div>
                                         <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#ff6b35] transition-colors">Sunset TukTuk City Tour</h3>
-                                        <p className="text-xs text-slate-500">Nuwan's Tuk Experience · Feb 28, 2026</p>
+                                        <p className="text-xs text-slate-500">Nuwan&apos;s Tuk Experience · Feb 28, 2026</p>
                                     </div>
                                 </div>
                                 <button className="flex items-center space-x-1.5 px-4 py-2 bg-[#ff6b35] text-white rounded-lg text-xs font-bold hover:bg-[#e55a2b] transition-all shadow-sm shadow-orange-200">
@@ -75,7 +75,7 @@ export default function TravelerReviews() {
                                             </div>
                                             <div>
                                                 <h3 className="text-sm font-bold text-slate-900">Anuradhapura Ancient City Cycle Tour</h3>
-                                                <p className="text-xs text-slate-500">You reviewed Thilak's Heritage Cycles · Mar 2, 2026</p>
+                                                <p className="text-xs text-slate-500">You reviewed Thilak&apos;s Heritage Cycles · Mar 2, 2026</p>
                                             </div>
                                         </div>
                                         <span className="flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
@@ -90,7 +90,7 @@ export default function TravelerReviews() {
                                         <span className="text-xs font-bold text-amber-500 ml-2">5.0</span>
                                     </div>
                                     <p className="text-sm text-slate-600 leading-relaxed">
-                                        "Absolutely incredible experience. Thilak was knowledgeable, kind, and the bike was in perfect condition. Felt completely safe and truly off the beaten path. 10/10 would recommend!"
+                                        &ldquo;Absolutely incredible experience. Thilak was knowledgeable, kind, and the bike was in perfect condition. Felt completely safe and truly off the beaten path. 10/10 would recommend!&rdquo;
                                     </p>
                                 </div>
                             </div>

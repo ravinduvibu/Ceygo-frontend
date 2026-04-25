@@ -131,7 +131,7 @@ export default function OnboardingPage() {
                             <div className="space-y-8 relative">
                                 <div>
                                     <h1 className="text-3xl font-black text-slate-900 mb-2">Build your identity.</h1>
-                                    <p className="text-slate-500 font-medium">Let's start with your business name and category.</p>
+                                    <p className="text-slate-500 font-medium">Let&apos;s start with your business name and category.</p>
                                 </div>
 
                                 <div className="space-y-6">

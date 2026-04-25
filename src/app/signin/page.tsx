@@ -19,9 +19,10 @@ function SignInContent() {
   useEffect(() => {
     const urlError = searchParams.get('error');
     if (urlError) {
-      setError(decodeURIComponent(urlError));
-      // Clean the URL so the error doesn't persist on refresh
-      window.history.replaceState({}, '', '/signin');
+      setTimeout(() => {
+        setError(decodeURIComponent(urlError));
+        window.history.replaceState({}, '', '/signin');
+      }, 0);
     }
   }, [searchParams]);
 
@@ -252,7 +253,7 @@ function SignInContent() {
 
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/signup" className="font-semibold text-primary hover:text-primary-hover transition-colors">
                 Sign up
               </Link>

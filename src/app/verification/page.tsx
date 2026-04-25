@@ -663,7 +663,7 @@ export default function VerificationPage() {
                                                 className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-all shadow-sm shadow-emerald-200 flex items-center justify-center space-x-2"
                                             >
                                                 <ShieldCheck className="w-4 h-4" />
-                                                <span>Grant 'Verified Shield' ✓</span>
+                                                <span>Grant &apos;Verified Shield&apos; ✓</span>
                                             </button>
                                             <button
                                                 onClick={() => setDecision("clarify")}

@@ -23,7 +23,7 @@ export default function GuidePage() {
                         <BookOpen className="w-16 h-16 text-slate-300" />
                         <h2 className="text-lg font-bold text-slate-700">Guide Coming Soon</h2>
                         <p className="text-slate-500 text-sm max-w-sm text-center">
-                            We're putting together comprehensive resources on ethical travel, direct payments, and verified safety protocols.
+                            We&apos;re putting together comprehensive resources on ethical travel, direct payments, and verified safety protocols.
                         </p>
                     </div>
                 </main>

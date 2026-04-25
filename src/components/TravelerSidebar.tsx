@@ -47,7 +47,7 @@ function clearNavLabel(label: string) {
     }
 }
 
-export default function TravelerSidebar({ activePage, wishlistCount = 0 }: SidebarProps) {
+export default function TravelerSidebar({ activePage, wishlistCount: _wishlistCount = 0 }: SidebarProps) {
     const router = useRouter();
     const [clearedLabels, setClearedLabels] = useState<string[]>([]);
     
@@ -61,15 +61,15 @@ export default function TravelerSidebar({ activePage, wishlistCount = 0 }: Sideb
 
     useEffect(() => {
         clearNavLabel(activePage);
-        setClearedLabels(getClearedLabels());
-
-        // ── Mock User & Counts ──────────────────────────────
-        setFullName("Alex Johnson");
-        setAvatar("");
-        setUnreadMessages(2);
-        setActiveJourneys(1);
-        setWishlistItems(3);
-        setLoading(false);
+        setTimeout(() => {
+            setClearedLabels(getClearedLabels());
+            setFullName("Alex Johnson");
+            setAvatar("");
+            setUnreadMessages(2);
+            setActiveJourneys(1);
+            setWishlistItems(3);
+            setLoading(false);
+        }, 0);
     }, [activePage]);
 
     const clearAllNavLabels = () => {
@@ -78,7 +78,7 @@ export default function TravelerSidebar({ activePage, wishlistCount = 0 }: Sideb
         setClearedLabels(allLabels);
     };
 
-    const handleNavClick = (label: string) => {
+    const handleNavClick = (_label: string) => {
         // As requested: viewing a tab clears all previous notifications
         clearAllNavLabels();
     };
@@ -136,7 +136,8 @@ export default function TravelerSidebar({ activePage, wishlistCount = 0 }: Sideb
             <div className="p-4 border-t border-slate-100 mt-auto">
                 <div className="flex items-center space-x-3 px-2 py-2 rounded-xl group">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 overflow-hidden relative shadow-sm ${!avatar ? "bg-gradient-to-br from-[#ff6b35] to-[#0ea5e9]" : ""}`}>
-                        {avatar 
+                        {avatar
+                            // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                             : <span>{initials}</span>
                         }

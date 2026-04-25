@@ -1,27 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
     LayoutDashboard,
-    Bookmark,
-    MessageSquare,
-    Compass,
-    Star,
-    BookOpen,
-    Settings,
-    ChevronRight,
-    LogOut,
     UserCircle2,
     Bell,
     Globe,
     CreditCard,
     Shield,
     Camera,
-    Heart,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import TravelerSidebar from "@/components/TravelerSidebar";
 
 // Note: navItems is now managed inside TravelerSidebar.
@@ -30,12 +19,11 @@ export default function TravelerSettings() {
     const [activeTab, setActiveTab] = useState("profile");
     
     // Form States
-    const [loading, setLoading] = useState(true);
+    const [loading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [userId, setUserId] = useState("");
-    const [fullName, setFullName] = useState("");
-    const [email, setEmail] = useState("");
-    const [bio, setBio] = useState("");
+    const [fullName, setFullName] = useState("Alex Johnson");
+    const [email, setEmail] = useState("alex.johnson@example.com");
+    const [bio, setBio] = useState("Passionate traveler exploring the hidden gems of Sri Lanka. Love authentic local experiences and meeting new people.");
     const [avatar, setAvatar] = useState("");
     
     // Alert States
@@ -43,16 +31,6 @@ export default function TravelerSettings() {
     const [successMsg, setSuccessMsg] = useState("");
     
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const router = useRouter();
-
-    useEffect(() => {
-        // ── Mock Profile Load ────────────────────────────────
-        setUserId("mock-user-001");
-        setEmail("alex.johnson@example.com");
-        setFullName("Alex Johnson");
-        setBio("Passionate traveler exploring the hidden gems of Sri Lanka. Love authentic local experiences and meeting new people.");
-        setLoading(false);
-    }, [router]);
 
     // Handle Image Upload and Compression
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

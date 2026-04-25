@@ -13,8 +13,6 @@ import {
     Navigation,
     Sparkles,
     ChevronLeft,
-    Clock,
-    Filter,
     X,
     Loader2
 } from "lucide-react";
@@ -286,7 +284,7 @@ export default function SearchDiscoveryPage() {
                             </div>
                             <h3 className="text-lg font-black text-slate-800 mb-2">No results found</h3>
                             <p className="text-sm text-slate-500 max-w-[240px] mb-8 leading-relaxed">
-                                We couldn't find anything matching "<span className="font-bold text-slate-700">{searchQuery}</span>". Try different keywords or filters.
+                                We couldn&apos;t find anything matching &ldquo;<span className="font-bold text-slate-700">{searchQuery}</span>&rdquo;. Try different keywords or filters.
                             </p>
                             <button 
                                 onClick={clearSearch}

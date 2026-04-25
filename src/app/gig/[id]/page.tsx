@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import {
     Star, Heart, MapPin, Clock, RefreshCw, CheckCircle2, Shield,
     ChevronLeft, ChevronRight, ChevronDown, BadgeCheck, Share2,
-    Flag, MessageCircle, ArrowLeft, ShoppingCart, Zap,
+    Flag, MessageCircle, ArrowLeft, ShoppingCart,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -227,9 +227,6 @@ const MOCK_GIGS: Record<string, Gig> = {
         ],
     },
 };
-// Fallback for IDs not in the map
-const FALLBACK_GIG: Gig = MOCK_GIGS["gig-001"];
-
 // ── Main Page ────────────────────────────────────────────────
 export default function GigPage() {
     const params = useParams();

@@ -32,6 +32,7 @@ export default function MyServices() {
     }, []);
 
     const showToast = (message: string, type: Toast["type"]) => {
+        // eslint-disable-next-line react-hooks/purity
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
@@ -55,7 +56,7 @@ export default function MyServices() {
         );
     };
 
-    const handleAddService = (newSvc: any) => {
+    const handleAddService = (newSvc: Gig) => {
         setServices([newSvc, ...services]);
         showToast("Gig published successfully!", "success");
     };

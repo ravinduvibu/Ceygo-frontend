@@ -1,4 +1,4 @@
-import { X, CalendarCheck2, Clock, MapPin, MessageSquare, CreditCard, ChevronRight, CheckCircle2 } from "lucide-react";
+import { X, Clock, MapPin, MessageSquare, CreditCard, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 
 interface Buyer {
@@ -121,7 +121,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onUpdateStat
                     <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Buyer Requirements</h3>
                         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-medium text-slate-700 leading-relaxed">
-                            "Hi, we're very excited for the trip! We are a couple, please make sure there's enough room for a small backpack. We'll be waiting at the main entrance."
+                            &ldquo;Hi, we&apos;re very excited for the trip! We are a couple, please make sure there&apos;s enough room for a small backpack. We&apos;ll be waiting at the main entrance.&rdquo;
                         </div>
                     </div>
 
